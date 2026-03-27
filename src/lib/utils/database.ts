@@ -6,14 +6,26 @@ import {
   type StoreNames
 } from 'idb';
 import type { UUID } from 'crypto';
-import type { ESession, EWindow } from '@/lib/types';
+import type { EClosedItem, ESession, EWindow, SessionKind } from '@/lib/types';
 import { log } from '@/lib/utils/log';
+import { recoveryDefaults } from '@/lib/constants/shared';
 
 interface DB extends DBSchema {
   sessions: {
     value: ESession;
-    key: UUID;
-    indexes: { title: string; dateSaved: number; tags: string | string[] };
+    key: UUID | string;
+    indexes: {
+      title: string;
+      dateSaved: number;
+      tags: string | string[];
+      kind: string;
+      updatedAt: number;
+    };
+  };
+  closedItems: {
+    value: EClosedItem;
+    key: string;
+    indexes: { closedAt: number; itemType: string; updatedAt: number };
   };
 }
 
@@ -21,7 +33,7 @@ class SessionsDB {
   private static instance: SessionsDB;
   private db!: IDBPDatabase<DB>;
   private open = false;
-  private version = 1;
+  private version = 2;
 
   constructor() {
     if (!SessionsDB.instance) SessionsDB.instance = this;
@@ -56,7 +68,21 @@ class SessionsDB {
 
     await this.initDB();
 
-    return this.db.getAllFromIndex('sessions', 'dateSaved', query, count);
+    const items = await this.db.getAllFromIndex('sessions', 'dateSaved', query, count);
+
+    return items.filter(
+      (session) => !session.kind || session.kind === 'saved'
+    );
+  }
+
+  async loadSessionsByKinds(kinds: SessionKind[]) {
+    log.info('[db.loadSessionsByKinds] init');
+
+    await this.initDB();
+
+    const sessions = await this.db.getAll('sessions');
+
+    return sessions.filter((session) => kinds.includes(session.kind ?? 'saved'));
   }
 
   async streamSessions(
@@ -96,6 +122,27 @@ class SessionsDB {
     return totalCount;
   }
 
+  async streamSessionsByKinds(
+    kinds: SessionKind[],
+    callback: (sessions: ESession[]) => unknown
+  ) {
+    log.info('[db.streamSessionsByKinds] init');
+
+    await this.initDB();
+
+    const sessions = (await this.db.getAll('sessions'))
+      .filter((session) => kinds.includes(session.kind ?? 'saved'))
+      .sort((a, b) => (b.updatedAt ?? b.dateSaved ?? 0) - (a.updatedAt ?? a.dateSaved ?? 0));
+
+    for (const session of sessions) {
+      session.windows = { length: session.windows.length } as EWindow[];
+    }
+
+    callback(sessions);
+
+    return sessions.length;
+  }
+
   async loadSessionWindows(id: UUID) {
     log.info('[db.loadSessionWindows] init');
 
@@ -110,6 +157,14 @@ class SessionsDB {
     await this.initDB();
 
     return this.db.add('sessions', session);
+  }
+
+  async upsertSession(session: ESession) {
+    log.info('[db.upsertSession] init');
+
+    await this.initDB();
+
+    return this.db.put('sessions', session);
   }
 
   async saveSessions(sessions: ESession[]) {
@@ -191,6 +246,109 @@ class SessionsDB {
 
     return this.db.clear('sessions');
   }
+
+  async deleteSessionsByKinds(kinds: SessionKind[]) {
+    log.info('[db.deleteSessionsByKinds] init');
+
+    await this.initDB();
+
+    const tx = this.db.transaction('sessions', 'readwrite');
+
+    for await (const cursor of tx.store.iterate()) {
+      if (kinds.includes(cursor.value.kind ?? 'saved')) {
+        cursor.delete();
+      }
+    }
+
+    await tx.done;
+  }
+
+  async replaceSessionsByKinds(kinds: SessionKind[], sessions: ESession[]) {
+    log.info('[db.replaceSessionsByKinds] init');
+
+    await this.initDB();
+
+    const tx = this.db.transaction('sessions', 'readwrite');
+
+    for await (const cursor of tx.store.iterate()) {
+      if (kinds.includes(cursor.value.kind ?? 'saved')) {
+        cursor.delete();
+      }
+    }
+
+    for (const session of sessions) {
+      tx.store.put(session);
+    }
+
+    await tx.done;
+  }
+
+  async loadClosedItems(count?: number) {
+    log.info('[db.loadClosedItems] init');
+
+    await this.initDB();
+
+    return this.db.getAllFromIndex('closedItems', 'closedAt', undefined, count);
+  }
+
+  async streamClosedItems(callback: (items: EClosedItem[]) => unknown) {
+    log.info('[db.streamClosedItems] init');
+
+    await this.initDB();
+
+    const items = (await this.db.getAll('closedItems')).sort(
+      (a, b) => b.closedAt - a.closedAt
+    );
+
+    callback(items);
+
+    return items.length;
+  }
+
+  async saveClosedItem(item: EClosedItem) {
+    log.info('[db.saveClosedItem] init');
+
+    await this.initDB();
+
+    return this.db.put('closedItems', item);
+  }
+
+  async deleteClosedItem(id: string) {
+    log.info('[db.deleteClosedItem] init');
+
+    await this.initDB();
+
+    return this.db.delete('closedItems', id);
+  }
+
+  async replaceClosedItems(items: EClosedItem[]) {
+    log.info('[db.replaceClosedItems] init');
+
+    await this.initDB();
+
+    const tx = this.db.transaction('closedItems', 'readwrite');
+    await tx.store.clear();
+
+    for (const item of items) {
+      tx.store.put(item);
+    }
+
+    await tx.done;
+  }
+
+  async pruneClosedItems(maxCount: number = recoveryDefaults.closedItemsMax) {
+    log.info('[db.pruneClosedItems] init');
+
+    await this.initDB();
+
+    const items = (await this.db.getAll('closedItems')).sort(
+      (a, b) => b.closedAt - a.closedAt
+    );
+
+    const toDelete = items.slice(maxCount);
+    await Promise.all(toDelete.map((item) => this.db.delete('closedItems', item.id as string)));
+  }
+
   upgradeSessions(
     db: IDBPDatabase<DB>,
     oldVersion: number,
@@ -208,7 +366,7 @@ class SessionsDB {
       `[db.upgradeSession] init - version: ${newVersion}, old: ${oldVersion}`
     );
 
-    if (newVersion === 1) {
+    if (oldVersion < 1) {
       log.info('[db.upgradeSession] creating object store');
 
       const sessionsStore = db.createObjectStore('sessions', {
@@ -218,6 +376,26 @@ class SessionsDB {
       sessionsStore.createIndex('title', 'title', { unique: false });
       sessionsStore.createIndex('dateSaved', 'dateSaved', { unique: false });
       sessionsStore.createIndex('tags', 'tags', { unique: false });
+    }
+
+    const sessionsStore =
+      transaction.objectStore('sessions');
+
+    if (oldVersion < 2) {
+      if (!sessionsStore.indexNames.contains('kind'))
+        sessionsStore.createIndex('kind', 'kind', { unique: false });
+      if (!sessionsStore.indexNames.contains('updatedAt'))
+        sessionsStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+
+      const closedItemsStore = db.createObjectStore('closedItems', {
+        keyPath: 'id'
+      });
+
+      closedItemsStore.createIndex('closedAt', 'closedAt', { unique: false });
+      closedItemsStore.createIndex('itemType', 'itemType', { unique: false });
+      closedItemsStore.createIndex('updatedAt', 'updatedAt', {
+        unique: false
+      });
     }
   }
 }

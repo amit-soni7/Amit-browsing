@@ -2,7 +2,6 @@
   import type { ENotification } from '@/lib/types';
   import { slide } from 'svelte/transition';
   import { cubicInOut } from 'svelte/easing';
-  import { IconButton } from '@/lib/components';
 
   export let detail: ENotification;
 
@@ -12,13 +11,21 @@
 
   let timeout: NodeJS.Timeout;
 
-  let color: string;
+  let colorClasses: string;
 
   $: {
-    if (detail?.type === 'info') color = 'bg-info text-white';
-    else if (detail?.type === 'success') color = 'bg-success text-black';
-    else if (detail?.type === 'warning') color = 'bg-warning text-black';
-    else color = 'bg-error text-white';
+    if (detail?.type === 'info')
+      colorClasses =
+        'bg-info/20 text-info border-info/30';
+    else if (detail?.type === 'success')
+      colorClasses =
+        'bg-success/20 text-success border-success/30';
+    else if (detail?.type === 'warning')
+      colorClasses =
+        'bg-warning/20 text-warning border-warning/30';
+    else
+      colorClasses =
+        'bg-error/20 text-error border-error/30';
   }
 
   $: if (show) {
@@ -32,20 +39,19 @@
 {#if show && detail}
   {#key detail}
     <div
-      class="flex h-max max-h-full w-max items-center gap-2 rounded-md px-2 py-1 {color} absolute bottom-5 right-5 text-sm font-semibold"
+      class="fixed bottom-5 right-5 z-50 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold border backdrop-blur-xl shadow-2xl {colorClasses}"
       transition:slide|global={{ duration: slideDuration, easing: cubicInOut }}
     >
       <h2 class="whitespace-nowrap">
         {detail.msg}
       </h2>
 
-      <div class="bg-overlay-black rounded-md p-0.5">
-        <IconButton
-          icon="close"
-          class="ml-auto text-lg hover:text-error-focus"
-          on:click={() => (show = false)}
-        />
-      </div>
+      <button
+        class="p-0.5 rounded-md hover:bg-black/20 transition-colors"
+        on:click={() => (show = false)}
+      >
+        <span class="material-symbols-outlined text-[16px]">close</span>
+      </button>
     </div>
   {/key}
 {/if}

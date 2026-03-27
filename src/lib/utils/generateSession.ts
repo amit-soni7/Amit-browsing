@@ -1,6 +1,9 @@
 import type { ESession } from '@/lib/types';
 
-export function generateSession(session: ESession): ESession {
+export function generateSession(
+  session: ESession,
+  overrides: Partial<ESession> = {}
+): ESession {
   const date = Date.now();
 
   return {
@@ -10,6 +13,14 @@ export function generateSession(session: ESession): ESession {
     dateSaved: date,
     dateModified: date,
     id: crypto.randomUUID(),
-    tags: session.tags
+    tags: session.tags,
+    kind: 'saved',
+    source: 'manual',
+    createdAt: date,
+    updatedAt: date,
+    lastOpenedAt: undefined,
+    schemaVersion: 1,
+    syncState: 'pending',
+    ...overrides
   };
 }

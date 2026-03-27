@@ -36,6 +36,11 @@ export const autoSaveDefaults = {
   autoSaveTimer: 15
 };
 
+export const recoveryDefaults = {
+  recoverySnapshotsMax: 1,
+  closedItemsMax: 100
+};
+
 export const favIconAllowedList: string[] = [
   'http',
   'data:image',

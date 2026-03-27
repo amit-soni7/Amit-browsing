@@ -16,13 +16,8 @@
   inert
   role="tooltip"
   style="position:absolute;top:{y}px;left:{x}px;translate:{translate.X}% {translate.Y}%"
+  class="pointer-events-none select-none whitespace-nowrap rounded-lg bg-tooltip px-2.5 py-1.5 text-xs font-medium text-tooltip-content shadow-xl border border-outline-variant/20 backdrop-blur-sm z-[9999]"
   in:fade|global={{ delay, duration }}
 >
   {title}
 </div>
-
-<style lang="postcss">
-  div {
-    @apply pointer-events-none select-none whitespace-nowrap rounded-md bg-tooltip px-2 py-1 text-sm font-medium text-tooltip-content;
-  }
-</style>

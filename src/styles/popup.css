@@ -1,44 +1,53 @@
-.tab-container {
-  @apply flex items-center rounded-md px-2 py-1.5;
-}
+/* ── Popup-specific styles ── */
 
 .session-container {
-  @apply mb-2 flex w-full cursor-pointer flex-col gap-2 rounded-md bg-neutral-2 p-2;
+  @apply flex w-full cursor-pointer flex-col gap-2 rounded-xl p-3 transition-all duration-200;
+  background: rgb(var(--surface-container) / 0.6);
+  border: 1px solid transparent;
 }
 
-.tab-container:hover,
 .session-container:hover {
-  @apply bg-neutral-3;
+  background: rgb(var(--surface-container-high) / 0.85);
+  border-color: rgb(var(--primary) / 0.18);
 }
 
 .session-info {
-  @apply flex w-full items-center gap-2;
+  @apply flex w-full items-center gap-3;
 }
 
 .session-name {
-  @apply max-w-max flex-1 overflow-hidden text-ellipsis whitespace-nowrap pl-1 text-sm font-bold;
-}
-
-.session-name {
-  @apply cursor-pointer;
+  @apply max-w-max flex-1 overflow-hidden text-ellipsis whitespace-nowrap pl-1 text-sm font-semibold cursor-pointer text-on-surface;
 }
 
 .session-name:hover {
-  @apply underline;
+  @apply text-primary;
 }
 
 .card {
-  @apply mr-1 inline-flex w-max select-none items-center gap-1 whitespace-nowrap rounded px-1 py-0.5 text-xs font-medium;
+  @apply mr-1 inline-flex w-max select-none items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium;
 }
 
 .session-card {
-  @apply flex select-none items-center gap-1 whitespace-nowrap rounded px-1 py-0.5 text-xs font-medium;
+  @apply flex select-none items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium transition-all duration-200;
+  background: rgb(var(--primary) / 0.1);
+  color: rgb(var(--on-surface-variant));
 }
 
 .session-card:hover {
-  @apply bg-black/20;
+  background: rgb(var(--primary) / 0.16);
+  color: rgb(var(--primary));
 }
 
-mark {
-  @apply mx-[1px] my-auto rounded-md bg-primary p-0.5 text-white;
+.tab-container {
+  @apply flex items-center rounded-lg px-3 py-2 transition-all duration-200;
+  background: transparent;
+}
+
+.tab-container:hover {
+  background: rgb(var(--surface-container-high) / 0.55);
+}
+
+html.light .tab-container:hover,
+body.light .tab-container:hover {
+  background: #e5c1854a;
 }

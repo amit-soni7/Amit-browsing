@@ -17,7 +17,7 @@
 <select
   name="tagsFilter"
   id="tagsFilter"
-  class="min-w-[11rem] rounded-md bg-neutral-3 p-1 text-center text-xs"
+  class="appearance-none rounded-lg bg-surface-container-high/80 border border-outline-variant/30 px-2.5 py-1 text-xs font-medium text-on-surface-variant hover:border-primary/30 hover:text-on-surface focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all cursor-pointer max-w-[11rem]"
   bind:value={$filterOptions.tagsFilter}
   on:change={(ev) => {
     settings.changeSetting('tagsFilter', ev.currentTarget.value);

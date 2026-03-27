@@ -1,5 +1,16 @@
 import type { UUID } from 'crypto';
 import type { EWindow } from '@/lib/types';
+import type { ETab } from '@/lib/types';
+
+export type SessionKind = 'saved' | 'autosave' | 'recovery';
+export type SessionSource =
+  | 'manual'
+  | 'timer'
+  | 'tab-close'
+  | 'window-close'
+  | 'startup-shutdown';
+
+export type SyncState = 'local' | 'pending' | 'synced' | 'failed';
 
 export interface ESession {
   title: string;
@@ -9,6 +20,16 @@ export interface ESession {
   dateModified: number | undefined;
   id: UUID | 'current';
   tags?: string;
+  kind?: SessionKind;
+  source?: SessionSource;
+  createdAt?: number;
+  updatedAt?: number;
+  lastOpenedAt?: number;
+  deviceId?: string;
+  schemaVersion?: number;
+  deletedAt?: number | null;
+  syncState?: SyncState;
+  remoteUpdatedAt?: number;
 }
 
 export interface FilterOptions {
@@ -52,8 +73,25 @@ export interface ENotification {
 export type URLFilterList = string[] | ['<all_urls>'] | undefined;
 
 export type SortMethod = 'newest' | 'oldest' | 'az' | 'za';
+export type ThemeMode = 'system' | 'dark' | 'light';
+
+export interface EClosedItem {
+  id: UUID | string;
+  itemType: 'tab' | 'window';
+  title: string;
+  tab?: ETab;
+  session?: ESession;
+  closedAt: number;
+  updatedAt: number;
+  deviceId?: string;
+  schemaVersion?: number;
+  deletedAt?: number | null;
+  syncState?: SyncState;
+  remoteUpdatedAt?: number;
+}
 
 export interface ESettings {
+  theme: ThemeMode;
   darkMode: boolean;
   popupView: boolean;
   selectionId: 'current' | UUID;

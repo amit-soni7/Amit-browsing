@@ -2,7 +2,6 @@
   import browser, { i18n } from 'webextension-polyfill';
   import { createEventDispatcher, onDestroy } from 'svelte';
   import { settings, sessions, currentSession as session } from '@/lib/stores';
-  import { IconButton } from '@/lib/components';
   import { tooltip, getSession, isExtensionViewed } from '@/lib/utils';
 
   const dispatch = createEventDispatcher();
@@ -34,7 +33,6 @@
   }
 
   function addEvents() {
-    //TODO: optimize: updating on tab basis instead of getting whole session - use activated, updated and removed to get the effect
     browser.windows.onFocusChanged.addListener(handleUpdate);
     browser.tabs.onCreated.addListener(handleUpdate);
     browser.tabs.onUpdated.addListener(handleUpdate);
@@ -90,7 +88,6 @@
   async function handleUpdate() {
     clearTimeout(timeout);
 
-    //should fix inconsistency in update flags
     timeout = setTimeout(async () => {
       $session = await getSession({
         pinned: $settings.excludePinned ? false : undefined,
@@ -103,48 +100,70 @@
   }
 </script>
 
-<button
-  class="mb-2 flex w-full cursor-pointer items-center gap-2 rounded-md bg-neutral-2 p-2 text-neutral-content hover:bg-neutral-3 {selected
-    ? '!bg-primary/30'
-    : ''}"
-  on:click={() => selection.select($session)}
->
-  <p
-    class="max-w-max flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-bold"
+<div class="mb-3 flex flex-col gap-3">
+  <button
+    use:tooltip={{ title: i18n.getMessage('labelSave') }}
+    class="inline-flex w-fit items-center gap-2 rounded-xl border border-primary/20 bg-surface-container-high px-4 py-2.5 text-sm font-bold text-primary shadow-lg shadow-primary/10 transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary-focus"
+    title={i18n.getMessage('labelSave')}
+    on:click|stopPropagation={() => dispatch('save')}
   >
-    {i18n.getMessage('labelCurrentSession')}
-  </p>
+    <span class="material-symbols-outlined text-[22px]">save</span>
+    <span>{i18n.getMessage('labelSave')}</span>
+  </button>
 
-  <div class="flex items-center gap-2 px-1">
-    <div
-      class="session-card"
-      use:tooltip={{
-        title: `${$session?.windows?.length} ${i18n.getMessage(
-          $session?.windows?.length > 1 ? 'labelWindows' : 'labelWindow'
-        )}`
-      }}
-    >
-      <IconButton icon="window" class="text-base" role="img" />
-      {$session?.windows?.length ?? 0}
+  <div
+    class="group flex w-full items-center gap-3 rounded-xl border p-3 pr-12 transition-all duration-200 {selected
+      ? 'bg-primary/15 border-primary/30 shadow-[0_0_15px_rgba(212,175,55,0.08)]'
+      : 'bg-surface-container/60 border-transparent hover:bg-surface-container-high/60 hover:border-primary/10'}"
+    role="button"
+    tabindex="0"
+    on:click={() => selection.select($session)}
+    on:keydown={(event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        selection.select($session);
+      }
+    }}
+  >
+    <div class="flex items-center gap-2">
+      <span class="relative flex h-2 w-2">
+        <span
+          class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"
+        ></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"
+        ></span>
+      </span>
+      <p
+        class="max-w-max flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-bold text-on-surface"
+      >
+        {i18n.getMessage('labelCurrentSession')}
+      </p>
     </div>
 
-    <div
-      class="session-card"
-      use:tooltip={{
-        title: `${$session?.tabsNumber} ${i18n.getMessage(
-          $session?.tabsNumber > 1 ? 'labelTabs' : 'labelTab'
-        )}`
-      }}
-    >
-      <IconButton icon="tab" class="text-base" role="img" />
-      {$session?.tabsNumber ?? 0}
+    <div class="ml-auto flex items-center gap-2">
+      <div
+        class="session-card"
+        use:tooltip={{
+          title: `${$session?.windows?.length} ${i18n.getMessage(
+            $session?.windows?.length > 1 ? 'labelWindows' : 'labelWindow'
+          )}`
+        }}
+      >
+        <span class="material-symbols-outlined text-[14px]">web_asset</span>
+        {$session?.windows?.length ?? 0}
+      </div>
+
+      <div
+        class="session-card"
+        use:tooltip={{
+          title: `${$session?.tabsNumber} ${i18n.getMessage(
+            $session?.tabsNumber > 1 ? 'labelTabs' : 'labelTab'
+          )}`
+        }}
+      >
+        <span class="material-symbols-outlined text-[14px]">tab</span>
+        {$session?.tabsNumber ?? 0}
+      </div>
     </div>
   </div>
-
-  <IconButton
-    icon="save"
-    title={i18n.getMessage('labelSave')}
-    class="ml-auto text-2xl hover:text-primary-focus"
-    on:click={() => dispatch('save')}
-  />
-</button>
+</div>

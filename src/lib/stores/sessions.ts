@@ -10,6 +10,7 @@ import {
   filterTagsAndSort
 } from '@/lib/utils';
 import browser, { i18n } from 'webextension-polyfill';
+import { authStore } from '@/lib/stores/auth';
 
 export let finished = false;
 
@@ -19,9 +20,16 @@ export const sessions = (() => {
   const selection: Writable<ESession> = writable();
 
   load();
+  authStore.onSavedSessions(async (remoteSessions) => {
+    await Promise.all(
+      remoteSessions.map((session) => sessionsDB.upsertSession(session))
+    );
+    const localSaved = await sessionsDB.loadSessions();
+    set(localSaved);
+  });
 
   async function load() {
-    const count = await sessionsDB.streamSessions('dateSaved', set, 50);
+    const count = await sessionsDB.streamSessionsByKinds(['saved'], set);
 
     log.info(`[sessions.load] loaded ${count} session`);
 
@@ -30,6 +38,12 @@ export const sessions = (() => {
     const { selectionId } = get(settings);
 
     selectById(selectionId);
+
+    const { user } = get(authStore);
+    if (user) {
+      const localSaved = await sessionsDB.loadSessions();
+      localSaved.forEach((session) => authStore.pushSavedSession(session));
+    }
 
     finished = true;
   }
@@ -44,6 +58,9 @@ export const sessions = (() => {
     const generated = generateSession(session);
 
     await sessionsDB.saveSession(generated);
+
+    // Sync to cloud (non-blocking)
+    authStore.pushSavedSession(generated);
 
     update((sessions) => {
       generated.windows = { length: generated.windows.length } as EWindow[]; //unref the obj for GC
@@ -71,6 +88,9 @@ export const sessions = (() => {
       ))!;
 
     await sessionsDB.updateSession(target);
+
+    // Sync update to cloud (non-blocking)
+    authStore.pushSavedSession(target);
 
     update((sessions) => {
       target.dateModified = Date.now();
@@ -111,11 +131,10 @@ export const sessions = (() => {
           }
 
           if (
-            session.windows.some(
-              (window) =>
-                window.tabs?.some(
-                  (tab) => tab.title?.toLowerCase().includes(query)
-                )
+            session.windows.some((window) =>
+              window.tabs?.some((tab) =>
+                tab.title?.toLowerCase().includes(query)
+              )
             )
           ) {
             session.windows = { length: session.windows.length } as EWindow[];
@@ -149,6 +168,9 @@ export const sessions = (() => {
       }
 
       sessionsDB.deleteSession(target);
+
+      // Remove from cloud (non-blocking)
+      authStore.removeSavedSession(target.id as string);
 
       sessions.splice(index, 1);
 

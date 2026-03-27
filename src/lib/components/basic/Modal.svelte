@@ -61,6 +61,13 @@
 </dialog>
 
 <style>
+  dialog {
+    border: none;
+    padding: 0;
+    margin: auto;
+    background: transparent;
+  }
+
   dialog::backdrop {
     backdrop-filter: blur(1px);
     background-color: rgba(0, 0, 0, 0.6);

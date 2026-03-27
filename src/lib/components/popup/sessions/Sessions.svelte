@@ -7,7 +7,8 @@
     ActionModal,
     TagsModal,
     Session,
-    CurrentSession
+    CurrentSession,
+    RecoverySection
   } from '@/lib/components';
   import { isInputTarget } from '@/lib/utils';
   import { i18n } from 'webextension-polyfill';
@@ -112,9 +113,10 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div class="mt-2 flex h-[90vh] gap-2 overflow-hidden">
+<div class="mt-2 flex h-[90vh] gap-2 overflow-hidden px-5 pb-5">
   <div class="flex h-full max-w-xs flex-1 flex-col">
     <CurrentSession on:save={saveAction} />
+    <RecoverySection />
 
     {#await $filtered}
       <p class="mt-2 text-center font-normal">Looking for sessions...</p>

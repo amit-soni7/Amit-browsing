@@ -5,33 +5,36 @@
 </script>
 
 <Section title={i18n.getMessage('aboutPage')}>
-  <div class="flex items-baseline gap-4 text-sm font-medium">
-    <p class="text-sm">
+  <div class="flex flex-wrap items-baseline gap-4 text-sm">
+    <p class="font-semibold text-on-surface">
       {EXT_NAME}
-      {EXT_VER}
+      <span class="text-primary">{EXT_VER}</span>
     </p>
-    <a href="https://github.com/navorite/sessionic/releases" target="_blank"
-      >{i18n.getMessage('aboutChangelogLabel')}</a
-    >
-    <a href="https://github.com/navorite/sessionic" target="_blank"
-      >{i18n.getMessage('aboutSourceCodeLabel')}</a
-    >
-    <a href="https://hosted.weblate.org/projects/sessionic" target="_blank"
-      >{i18n.getMessage('aboutTranslationsLabel')}</a
+    <a
+      class="text-primary hover:text-primary-focus transition-colors"
+      href="https://github.com/navorite/sessionic/releases"
+      target="_blank">{i18n.getMessage('aboutChangelogLabel')}</a
     >
     <a
+      class="text-primary hover:text-primary-focus transition-colors"
+      href="https://github.com/navorite/sessionic"
+      target="_blank">{i18n.getMessage('aboutSourceCodeLabel')}</a
+    >
+    <a
+      class="text-primary hover:text-primary-focus transition-colors"
+      href="https://hosted.weblate.org/projects/sessionic"
+      target="_blank">{i18n.getMessage('aboutTranslationsLabel')}</a
+    >
+    <a
+      class="text-primary hover:text-primary-focus transition-colors"
       href="https://github.com/navorite/sessionic/blob/main/LICENSE"
       target="_blank">{i18n.getMessage('aboutLicenseLabel')}</a
     >
   </div>
 
-  <h2 class="text-lg font-bold">{i18n.getMessage('aboutDonateHeading')}</h2>
+  <h2 class="text-lg font-bold text-on-surface">
+    {i18n.getMessage('aboutDonateHeading')}
+  </h2>
 
   <Donate />
 </Section>
-
-<style lang="postcss">
-  a {
-    --uno: 'font-medium text-link hover:text-link-focus';
-  }
-</style>

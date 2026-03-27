@@ -24,7 +24,8 @@
   <Switch
     title={i18n.getMessage('settingsDarkMode')}
     checked={$settings.darkMode}
-    on:change={() => settings.changeSetting('darkMode', !$settings.darkMode)}
+    on:change={() =>
+      settings.setTheme($settings.darkMode ? 'light' : 'dark')}
   />
 </Section>
 
@@ -39,10 +40,10 @@
       else browser.alarms.clear('auto-save');
     }}
   />
-  <label class="max-w-max text-sm font-medium">
+  <label class="max-w-max text-sm font-medium text-on-surface">
     <input
       type="number"
-      class="mr-2 h-7 w-11 rounded-md text-center disabled:text-neutral-6"
+      class="mr-2 h-8 w-12 rounded-lg border border-outline-variant/40 bg-surface-container text-center text-sm text-on-surface outline-none focus:border-primary/50 disabled:opacity-40 transition-all"
       min="1"
       max="15"
       value={$settings.autoSaveMaxSessions}
@@ -61,10 +62,10 @@
     />
     {i18n.getMessage('settingsAutosaveMax')}
   </label>
-  <label class="max-w-max text-sm font-medium">
+  <label class="max-w-max text-sm font-medium text-on-surface">
     <input
       type="number"
-      class="mr-2 h-7 w-11 rounded-md text-center disabled:text-neutral-6"
+      class="mr-2 h-8 w-12 rounded-lg border border-outline-variant/40 bg-surface-container text-center text-sm text-on-surface outline-none focus:border-primary/50 disabled:opacity-40 transition-all"
       min="1"
       value={$settings.autoSaveTimer}
       on:change={(event) => {
@@ -85,14 +86,14 @@
 </Section>
 
 <Section title={i18n.getMessage('settingsExtensionActionsHeading')}>
-  <label class="flex flex-col gap-2 font-medium">
+  <label class="flex flex-col gap-2 text-sm font-medium text-on-surface">
     {i18n.getMessage('settingsURLFilterList')}
     <textarea
       name="filter-list"
       id="filter-list"
       rows="8"
       placeholder={i18n.getMessage('settingsURLFilterListPlaceholder')}
-      class="resize-none rounded-md bg-neutral-3 p-2 text-sm placeholder:text-neutral-content/40"
+      class="resize-none rounded-xl border border-outline-variant/40 bg-surface-container p-3 text-sm text-on-surface placeholder:text-on-surface-variant/30 outline-none focus:border-primary/50 transition-all"
       inputmode="url"
       value={urlList}
       on:change={(ev) => handleFilterListChange(ev, urlList)}
@@ -108,7 +109,7 @@
 
   <button
     type="button"
-    class="max-w-fit rounded-md bg-error px-4 py-2 text-white hover:bg-error-focus"
+    class="max-w-fit rounded-xl bg-error/15 border border-error/20 px-5 py-2.5 text-sm font-bold text-error hover:bg-error/25 transition-all"
     on:click={settings.clear}
   >
     {i18n.getMessage('settingsResetAll')}
@@ -141,9 +142,9 @@
 
   <TagEditor />
 
-  <div class="flex gap-2">
+  <div class="flex gap-3">
     <label
-      class="max-w-max cursor-pointer rounded-md bg-neutral-4 p-2 hover:bg-neutral-5"
+      class="max-w-max cursor-pointer rounded-xl bg-surface-container-high border border-outline-variant/30 px-5 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-highest hover:border-primary/20 transition-all"
     >
       {i18n.getMessage('settingsImportSessions')}
       <input
@@ -155,7 +156,7 @@
     </label>
 
     <button
-      class="max-w-max rounded-md bg-neutral-4 p-2 hover:bg-neutral-5"
+      class="max-w-max rounded-xl bg-surface-container-high border border-outline-variant/30 px-5 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-highest hover:border-primary/20 transition-all"
       on:click={() => handleExport($settings.exportCompressed)}
       >{i18n.getMessage('settingsExportSessions')}</button
     >

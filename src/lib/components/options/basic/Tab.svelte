@@ -17,8 +17,8 @@
 
 <a
   href="#{path}"
-  class="{selected
-    ? 'bg-primary text-white hover:bg-primary-focus'
-    : 'bg-neutral-3 hover:bg-neutral-4'} rounded-md p-2 font-semibold"
+  class="px-4 py-2 rounded-lg text-sm font-semibold transition-all {selected
+    ? 'bg-primary text-on-primary shadow-lg shadow-primary/20'
+    : 'text-on-surface-variant hover:text-on-surface hover:bg-white/5'}"
   >{title}</a
 >

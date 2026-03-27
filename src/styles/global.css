@@ -1,59 +1,186 @@
 @import './fonts';
 
-@layer utilities {
-  @media (prefers-reduced-motion: no-preference) {
-    .fade {
-      transition: all 200ms ease-in-out;
-    }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+html.light,
+body.light {
+  --primary: 119 90 25;
+  --primary-focus: 93 66 1;
+  --on-primary: 255 255 255;
+  --secondary: 102 93 79;
+  --secondary-container: 238 225 206;
+  --tertiary: 115 91 43;
+  --on-tertiary: 255 255 255;
+  --tertiary-container: 205 175 119;
+  --surface: 251 249 244;
+  --surface-dim: 219 218 213;
+  --surface-bright: 251 249 244;
+  --surface-container: 240 238 233;
+  --surface-container-low: 245 243 238;
+  --surface-container-high: 234 232 227;
+  --surface-container-highest: 228 226 221;
+  --surface-container-lowest: 255 255 255;
+  --surface-variant: 228 226 221;
+  --surface-tint: 119 90 25;
+  --background: 251 249 244;
+  --on-background: 27 28 25;
+  --on-surface: 27 28 25;
+  --on-surface-variant: 77 70 53;
+  --outline: 127 118 99;
+  --outline-variant: 208 197 175;
+  --error: 186 26 26;
+  --error-focus: 147 0 10;
+  --on-error: 255 255 255;
+  --error-container: 255 218 214;
+  --on-error-container: 147 0 10;
+  --info: 31 111 168;
+  --info-focus: 21 90 137;
+  --success: 63 111 70;
+  --success-focus: 49 89 57;
+  --warning: 154 103 0;
+  --warning-focus: 122 82 0;
+  --link: 119 90 25;
+  --link-focus: 93 66 1;
+  --tooltip: 48 49 46;
+  --tooltip-content: 242 241 236;
+  --primary-container: 212 173 101;
+  --on-primary-container: 91 64 0;
+  --inverse-surface: 48 49 46;
+  --inverse-on-surface: 242 241 236;
+  --inverse-primary: 233 193 118;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: 212 175 55;
+    --primary-focus: 224 192 74;
+    --on-primary: 26 22 8;
+    --secondary: 204 180 136;
+    --secondary-container: 58 48 26;
+    --tertiary: 200 160 240;
+    --on-tertiary: 26 0 46;
+    --tertiary-container: 61 32 96;
+    --surface: 20 18 15;
+    --surface-dim: 20 18 15;
+    --surface-bright: 36 33 26;
+    --surface-container: 28 26 20;
+    --surface-container-low: 24 22 17;
+    --surface-container-high: 36 33 26;
+    --surface-container-highest: 44 40 32;
+    --surface-container-lowest: 13 12 10;
+    --surface-variant: 36 33 26;
+    --surface-tint: 212 175 55;
+    --background: 13 12 10;
+    --on-background: 236 233 224;
+    --on-surface: 236 233 224;
+    --on-surface-variant: 196 180 160;
+    --outline: 90 80 58;
+    --outline-variant: 72 58 42;
+    --error: 255 107 107;
+    --error-focus: 255 133 133;
+    --on-error: 26 0 0;
+    --error-container: 61 20 20;
+    --on-error-container: 255 179 179;
+    --info: 79 195 247;
+    --info-focus: 115 208 249;
+    --success: 102 187 106;
+    --success-focus: 129 199 132;
+    --warning: 255 167 38;
+    --warning-focus: 255 183 77;
+    --link: 212 175 55;
+    --link-focus: 224 192 74;
+    --tooltip: 44 40 32;
+    --tooltip-content: 236 233 224;
+    --primary-container: 110 90 14;
+    --on-primary-container: 245 230 179;
+    --inverse-surface: 236 233 224;
+    --inverse-on-surface: 13 12 10;
+    --inverse-primary: 110 90 10;
   }
 }
 
-:root {
-  --primary: 215 96% 38%;
-  --primary-focus: 215 96% 43%;
-
-  --neutral-1: 0 0% 97%;
-  --neutral-2: 0 0% 92%;
-  --neutral-3: 0 0% 87%;
-  --neutral-4: 0 0% 82%;
-  --neutral-5: 0 0% 77%;
-  --neutral-6: 0 0% 72%;
-  --neutral-7: 0 0% 67%;
-  --neutral-content: 0 0% 0%;
-
-  --info: 215 96% 33%;
-  --info-focus: 215 96% 38%;
-
-  --success: 159 100% 37%;
-  --success-focus: 159 100% 47%;
-
-  --warning: 27 100% 50%;
-  --warning-focus: 27 100% 55%;
-
-  --error: 0 99% 30%;
-  --error-focus: 0 99% 35%;
-
-  --link: 222 100% 34%;
-  --link-focus: 222 100% 24%;
-
-  --tooltip: 220 5% 34%;
-  --tooltip-content: 0 0% 100%;
+html.dark,
+body.dark {
+  --primary: 212 175 55;
+  --primary-focus: 224 192 74;
+  --on-primary: 26 22 8;
+  --secondary: 204 180 136;
+  --secondary-container: 58 48 26;
+  --tertiary: 200 160 240;
+  --on-tertiary: 26 0 46;
+  --tertiary-container: 61 32 96;
+  --surface: 20 18 15;
+  --surface-dim: 20 18 15;
+  --surface-bright: 36 33 26;
+  --surface-container: 28 26 20;
+  --surface-container-low: 24 22 17;
+  --surface-container-high: 36 33 26;
+  --surface-container-highest: 44 40 32;
+  --surface-container-lowest: 13 12 10;
+  --surface-variant: 36 33 26;
+  --surface-tint: 212 175 55;
+  --background: 13 12 10;
+  --on-background: 236 233 224;
+  --on-surface: 236 233 224;
+  --on-surface-variant: 196 180 160;
+  --outline: 90 80 58;
+  --outline-variant: 72 58 42;
+  --error: 255 107 107;
+  --error-focus: 255 133 133;
+  --on-error: 26 0 0;
+  --error-container: 61 20 20;
+  --on-error-container: 255 179 179;
+  --info: 79 195 247;
+  --info-focus: 115 208 249;
+  --success: 102 187 106;
+  --success-focus: 129 199 132;
+  --warning: 255 167 38;
+  --warning-focus: 255 183 77;
+  --link: 212 175 55;
+  --link-focus: 224 192 74;
+  --tooltip: 44 40 32;
+  --tooltip-content: 236 233 224;
+  --primary-container: 110 90 14;
+  --on-primary-container: 245 230 179;
+  --inverse-surface: 236 233 224;
+  --inverse-on-surface: 13 12 10;
+  --inverse-primary: 110 90 10;
 }
 
-.dark {
-  --neutral-1: 220 6% 9%;
-  --neutral-2: 220 6% 14%;
-  --neutral-3: 220 6% 19%;
-  --neutral-4: 220 6% 24%;
-  --neutral-5: 220 6% 29%;
-  --neutral-6: 220 6% 34%;
-  --neutral-content: 0 0% 90%;
+/* ── Glass panel utilities ── */
+@layer components {
+  .glass-panel {
+    background: rgb(var(--surface-container) / 0.72);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgb(var(--outline-variant) / 0.35);
+  }
 
-  --link: 222 95% 74%;
-  --link-focus: 222 95% 84%;
+  .glass-panel-elevated {
+    background: rgb(var(--surface-container) / 0.86);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgb(var(--outline-variant) / 0.4);
+  }
 
-  --tooltip: 220 7% 66%;
-  --tooltip-content: 0 0% 0%;
+  .soft-glow {
+    box-shadow: 0 0 30px rgb(var(--primary) / 0.08);
+  }
+}
+
+/* ── Material Symbols ── */
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+}
+
+/* ── Base resets ── */
+dialog:not([open]) {
+  display: none;
 }
 
 html,
@@ -62,39 +189,61 @@ body {
 }
 
 body {
-  @apply container mx-auto min-w-[800px] min-h-[520px] scroll-smooth bg-neutral-1 px-4 py-2 font-sans text-neutral-content;
+  @apply min-h-screen bg-background text-on-background font-body antialiased;
+  padding: 0;
+  margin: 0;
 }
 
 #root {
   @apply flex h-full flex-col;
 }
 
-h1 {
-  @apply text-xl font-bold;
-}
-
-p,
-span,
-div {
-  @apply text-base;
-}
-
+/* ── Scrollbar ── */
 ::-webkit-scrollbar {
-  @apply w-1 rounded-md bg-neutral-2;
+  @apply w-1 rounded-md;
+  background: rgb(var(--surface-container-high) / 0.55);
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply rounded-md bg-neutral-4;
+  @apply rounded-md;
+  background: rgb(var(--primary) / 0.25);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-neutral-5;
+  background: rgb(var(--primary) / 0.4);
 }
 
-textarea::-webkit-scrollbar {
-  @apply w-3 border border-solid border-neutral-6;
+/* ── Selection ── */
+::selection {
+  background: rgb(var(--primary) / 0.28);
 }
 
-textarea::-webkit-scrollbar-thumb {
-  @apply border border-solid border-neutral-6;
+/* ── Animations ── */
+@layer utilities {
+  @media (prefers-reduced-motion: no-preference) {
+    .fade {
+      transition: all 200ms ease-in-out;
+    }
+
+    .fade-in {
+      animation: fadeIn 300ms ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  }
+}
+
+/* ── Search highlight ── */
+mark {
+  @apply mx-[1px] rounded bg-primary/30 px-0.5 text-on-background font-semibold;
 }

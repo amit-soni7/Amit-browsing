@@ -41,7 +41,7 @@
   >
   <svelte:fragment slot="content">
     <form
-      class="flex h-full w-full flex-col justify-around gap-2"
+      class="flex h-full w-full flex-col gap-5"
       on:submit|preventDefault={() => {
         if (selectVal === 'createANewTag') {
           if (tag.name.trim()) {
@@ -60,39 +60,37 @@
         open = false;
       }}
     >
-      <label class="flex items-center gap-2">
-        {i18n.getMessage('tagsModalSelectTag')}:
+      <label class="flex flex-col gap-2 text-sm font-medium text-on-surface">
+        <span class="text-on-surface-variant">
+          {i18n.getMessage('tagsModalSelectTag')}
+        </span>
         <select
           name="tags"
           id="tags"
-          class="flex-1 rounded-md border-2 border-neutral-4 bg-transparent p-1 outline-none"
+          class="w-full rounded-xl border border-outline-variant/40 bg-surface-container px-3 py-2 text-sm text-on-surface outline-none transition-all focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
           bind:value={selectVal}
         >
-          <option
-            value={'createANewTag'}
-            class="bg-neutral-6 text-neutral-content"
-            >{i18n.getMessage('labelAddTag')}</option
-          >
+          <option value={'createANewTag'}>{i18n.getMessage('labelAddTag')}</option>
           {#if tags}
             {#each Object.keys(tags) as tag}
-              <option class="bg-neutral-6 text-neutral-content" value={tag}
-                >{tag}</option
-              >
+              <option value={tag}>{tag}</option>
             {/each}
           {/if}
         </select>
       </label>
 
       {#if selectVal === 'createANewTag'}
-        <div class="flex flex-col gap-2">
-          <label>
-            {i18n.getMessage('labelSortName')}:
+        <div class="flex flex-col gap-4 rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
+          <label class="flex flex-col gap-2 text-sm font-medium text-on-surface">
+            <span class="text-on-surface-variant">
+              {i18n.getMessage('labelSortName')}
+            </span>
             <input
               type="text"
               minlength="1"
               maxlength="15"
               placeholder={i18n.getMessage('tagPlaceholder')}
-              class="rounded-md border-2 border-neutral-4 bg-transparent px-2 py-1 outline-none"
+              class="w-full rounded-xl border border-outline-variant/40 bg-surface-container px-3 py-2 text-sm text-on-surface outline-none transition-all focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
               value={tag.name}
               on:input={(event) => {
                 const value = event.currentTarget.value;
@@ -102,28 +100,34 @@
 
                 tag.name = value;
               }}
-            /></label
-          >
-          <ColorInput bind:color={tag.bgColor}
-            >{i18n.getMessage('settingsTagsBackground')}:</ColorInput
-          >
-          <ColorInput bind:color={tag.textColor}
-            >{i18n.getMessage('settingsTagsText')}:</ColorInput
-          >
+            />
+          </label>
+
+          <div class="grid grid-cols-2 gap-3">
+            <ColorInput bind:color={tag.bgColor}
+              >{i18n.getMessage('settingsTagsBackground')}</ColorInput
+            >
+            <ColorInput bind:color={tag.textColor}
+              >{i18n.getMessage('settingsTagsText')}</ColorInput
+            >
+          </div>
         </div>
       {/if}
 
-      <span class="flex gap-2">
-        {i18n.getMessage('settingsTagsPreview')}:
+      <div class="flex flex-col gap-2 text-sm font-medium text-on-surface">
+        <span class="text-on-surface-variant">
+          {i18n.getMessage('settingsTagsPreview')}
+        </span>
         <Tag
+          class="min-h-[2rem] max-w-[12rem] bg-surface-container-high"
           bind:name={tag.name}
           bind:bgColor={tag.bgColor}
           bind:textColor={tag.textColor}
         />
-      </span>
+      </div>
 
       <button
-        class="rounded-md bg-primary px-2 py-1 hover:bg-primary-focus disabled:bg-neutral-3/50 disabled:text-neutral-content/50"
+        class="mt-auto rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-on-primary shadow-lg shadow-primary/20 transition-all hover:bg-primary-focus disabled:bg-surface-container-high disabled:text-on-surface-variant/40 disabled:shadow-none"
         disabled={!tag.name.trim()}>{i18n.getMessage('labelAddTag')}</button
       >
     </form>

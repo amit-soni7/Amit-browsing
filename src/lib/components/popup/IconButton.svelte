@@ -6,9 +6,33 @@
   export let role: 'button' | 'img' = 'button';
 
   export { className as class };
-  let className = 'text-2xl hover:text-primary-focus';
+  let className = '';
 
-  $: src = `../../icons/${icon}.svg`;
+  const materialMap: Record<string, string> = {
+    default: 'article',
+    copy: 'content_copy',
+    check: 'check',
+    save: 'save',
+    rename: 'edit',
+    delete: 'delete',
+    open: 'open_in_new',
+    close: 'close',
+    incognito: 'visibility_off',
+    window: 'web_asset',
+    tab: 'tab',
+    global: 'language',
+    extension: 'extension',
+    history: 'schedule',
+    expand: 'expand_more',
+    collapse: 'expand_less',
+    tag: 'label',
+    untag: 'label_off',
+    search: 'search',
+    settings: 'settings',
+    donate: 'favorite'
+  };
+
+  $: materialIcon = materialMap[icon] ?? 'article';
 </script>
 
 <button
@@ -16,16 +40,15 @@
     title
   }}
   {role}
-  class="block h-[1em] w-[1em] cursor-pointer bg-current {role === 'img'
+  class="inline-flex items-center justify-center cursor-pointer {role === 'img'
     ? 'pointer-events-none'
     : ''} {className}"
-  style:mask-image="url({src})"
-  style:mask-repeat="no-repeat"
-  style:mask-position="center"
-  style:mask-size="cover"
-  style:-webkit-mask-image="url({src})"
-  style:-webkit-mask-repeat="no-repeat"
-  style:-webkit-mask-position="center"
-  style:-webkit-mask-size="cover"
   on:click
-></button>
+>
+  <span
+    class="material-symbols-outlined select-none"
+    style="font-size: 1em; line-height: 1;"
+  >
+    {materialIcon}
+  </span>
+</button>

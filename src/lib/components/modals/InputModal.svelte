@@ -54,7 +54,7 @@
   <svelte:fragment slot="content">
     <input
       bind:this={inputEl}
-      class="w-[24rem] rounded-md border-2 border-solid border-neutral-4 bg-transparent px-2 py-1 font-semibold outline-none placeholder:font-normal placeholder:text-gray-200"
+      class="w-[24rem] rounded-xl border border-outline-variant/40 bg-surface-container px-4 py-2.5 text-sm font-medium text-on-surface outline-none placeholder:text-on-surface-variant/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
       type="text"
       name={type}
       id={type}
@@ -68,7 +68,7 @@
 
     {#if disabled}
       <p
-        class="mx-auto w-max rounded-md bg-error p-1 px-2 text-sm font-semibold"
+        class="mx-auto w-max rounded-lg bg-error/15 border border-error/20 text-error px-3 py-1.5 text-xs font-semibold"
       >
         {errMsg}
       </p>
@@ -80,9 +80,7 @@
     title="{type} session"
     slot="footer"
     type="button"
-    class="{type === 'Rename'
-      ? 'px-4'
-      : 'px-6'} rounded-md bg-primary py-1 text-center font-medium text-white hover:bg-primary-focus disabled:cursor-not-allowed disabled:bg-neutral-2 disabled:text-neutral-6"
+    class="rounded-xl bg-primary px-5 py-2 text-sm font-bold text-on-primary hover:bg-primary-focus disabled:cursor-not-allowed disabled:bg-surface-container-high disabled:text-on-surface-variant/40 transition-all shadow-lg shadow-primary/20 disabled:shadow-none"
     on:click={submit}>{i18n.getMessage(`label${type}`)}</button
   >
 </Modal>

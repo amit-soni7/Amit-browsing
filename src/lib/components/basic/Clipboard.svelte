@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { IconButton } from '@/lib/components';
   import { tooltip } from '@/lib/utils';
 
   export let value: string;
@@ -11,7 +10,7 @@
 
 <button
   type="button"
-  class="rounded-md bg-black/30 p-1 hover:bg-black/50"
+  class="rounded-lg p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all"
   use:tooltip={{
     title: copied ? 'Copied' : 'Copy to clipboard'
   }}
@@ -27,9 +26,7 @@
     }, 2000);
   }}
 >
-  <IconButton
-    role="img"
-    icon={copied ? 'check' : 'copy'}
-    class="text-2xl {copied ? 'text-neutral-content-disabled' : ''}"
-  />
+  <span class="material-symbols-outlined text-[18px]"
+    >{copied ? 'check' : 'content_copy'}</span
+  >
 </button>

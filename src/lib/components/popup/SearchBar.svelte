@@ -1,7 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import { IconButton } from '@/lib/components';
-  import { isInputTarget } from '@/lib/utils';
+  import { isInputTarget, tooltip } from '@/lib/utils';
   import { i18n } from 'webextension-polyfill';
 
   export let value: string;
@@ -47,14 +46,17 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <div
-  class="flex items-center justify-center rounded-md text-sm {showInputBar
-    ? 'cursor-text bg-neutral-3 px-2 py-0.5'
-    : 'cursor-pointer'} fade {className}"
+  class="flex items-center rounded-full transition-all duration-200 {showInputBar
+    ? 'bg-surface-container-high/80 border border-primary/20 px-3 py-1 gap-2'
+    : 'cursor-pointer'} {className}"
   on:focusin={handleInputBar}
   on:focusout={handleInputBar}
   tabindex="-1"
 >
   {#if showInputBar}
+    <span class="material-symbols-outlined text-on-surface-variant text-[18px]"
+      >search</span
+    >
     <input
       bind:this={inputEl}
       on:keydown={(event) => {
@@ -64,18 +66,24 @@
       type="text"
       placeholder={i18n.getMessage('labelSearchPlaceholder')}
       bind:value
-      class="bg-transparent font-semibold text-neutral-content outline-none"
+      class="bg-transparent text-sm font-medium text-on-surface outline-none placeholder:text-on-surface-variant/50 w-28"
     />
-    <IconButton
-      icon="close"
-      title={i18n.getMessage('labelClear')}
-      class="text-2xl hover:text-error-focus"
+    <button
+      use:tooltip={{ title: i18n.getMessage('labelClose') }}
+      class="p-0.5 text-on-surface-variant hover:text-error transition-colors rounded-full"
       on:click={() => {
         if (value === '') showInputBar = false;
         value = '';
       }}
-    />
+    >
+      <span class="material-symbols-outlined text-[16px]">close</span>
+    </button>
   {:else}
-    <IconButton icon="search" role="img" class="text-2xl" />
+    <button
+      use:tooltip={{ title: i18n.getMessage('labelSearchPlaceholder') }}
+      class="p-2 text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors rounded-full"
+    >
+      <span class="material-symbols-outlined text-[20px]">search</span>
+    </button>
   {/if}
 </div>

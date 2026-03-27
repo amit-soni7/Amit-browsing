@@ -7,6 +7,12 @@ import { getStorage, setStorage } from '@/lib/utils/storage';
 import { autoSaveDefaults } from '@/lib/constants/shared';
 import type { ESession, ESettings } from '@/lib/types';
 import { sendMessage } from '@/lib/utils/messages';
+import {
+  persistCurrentWorkspace,
+  queueWorkspaceSnapshot,
+  recordClosedEntity,
+  refreshSessionCache
+} from './utils/recovery';
 
 async function createTimer() {
   const [settings, alarm] = await Promise.all([
@@ -25,6 +31,7 @@ async function createTimer() {
 }
 
 createTimer();
+refreshSessionCache().then(() => persistCurrentWorkspace('startup-shutdown'));
 
 browser.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'auto-save') {
@@ -32,7 +39,12 @@ browser.alarms.onAlarm.addListener(async (alarm) => {
     session.title = 'Autosave';
     session.tags = 'Autosave';
 
-    await sessionsDB.saveSession(generateSession(session));
+    await sessionsDB.saveSession(
+      generateSession(session, {
+        kind: 'autosave',
+        source: 'timer'
+      })
+    );
 
     const [count, { autoSaveMaxSessions, selectionId }] = await Promise.all([
       sessionsDB.getAutosavedCount(),
@@ -52,7 +64,25 @@ browser.alarms.onAlarm.addListener(async (alarm) => {
         selectedId: selectionId
       });
     });
+
+    sendMessage({ message: 'notifyRecoverySnapshots' });
   }
+});
+
+const queueTabSnapshot = () => queueWorkspaceSnapshot('startup-shutdown');
+
+browser.windows.onCreated.addListener(queueTabSnapshot);
+browser.windows.onRemoved.addListener(queueTabSnapshot);
+browser.windows.onFocusChanged.addListener(queueTabSnapshot);
+browser.tabs.onCreated.addListener(() => queueWorkspaceSnapshot('startup-shutdown'));
+browser.tabs.onUpdated.addListener(() => queueWorkspaceSnapshot('startup-shutdown'));
+browser.tabs.onActivated.addListener(() => queueWorkspaceSnapshot('startup-shutdown'));
+browser.tabs.onMoved.addListener(() => queueWorkspaceSnapshot('startup-shutdown'));
+browser.tabs.onAttached.addListener(() => queueWorkspaceSnapshot('startup-shutdown'));
+browser.tabs.onDetached.addListener(() => queueWorkspaceSnapshot('startup-shutdown'));
+browser.tabs.onRemoved.addListener((tabId, removeInfo) => {
+  recordClosedEntity(tabId, removeInfo.windowId, removeInfo.isWindowClosing);
+  queueWorkspaceSnapshot(removeInfo.isWindowClosing ? 'window-close' : 'tab-close');
 });
 
 browser.runtime.onInstalled.addListener((details) => {

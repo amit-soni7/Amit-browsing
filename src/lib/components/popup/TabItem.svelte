@@ -2,16 +2,16 @@
   import browser, { i18n } from 'webextension-polyfill';
   import type { ETab } from '@/lib/types';
   import { createEventDispatcher } from 'svelte';
-  import { IconButton } from '@/lib/components';
   import { filterOptions } from '@/lib/stores';
-  import { getFavIcon, getFavIconType, markResult } from '@/lib/utils';
+  import { getFavIcon, getFavIconType, markResult, tooltip } from '@/lib/utils';
+  import { IconButton } from '@/lib/components';
 
   export let tab: ETab;
   export let current = false;
 
   const dispatch = createEventDispatcher<{ delete: ETab }>();
 
-  $: active = tab.active ? 'text-link' : '';
+  $: active = tab.active ? 'text-primary' : '';
 
   $: favIconUrl = getFavIcon(tab.url, tab.favIconUrl);
 
@@ -21,56 +21,80 @@
           case_sensitive: false
         })
       : tab.title;
+
+  const iconMap: Record<string, string> = {
+    default: 'article',
+    global: 'language',
+    extension: 'extension',
+    settings: 'settings',
+    history: 'schedule'
+  };
+
+  function handleDragStart(event: DragEvent) {
+    if (!current || !event.dataTransfer) return;
+
+    event.dataTransfer.effectAllowed = 'copy';
+    event.dataTransfer.setData(
+      'application/x-sessionic-tab',
+      JSON.stringify(tab)
+    );
+    event.dataTransfer.setData('text/plain', tab.title ?? tab.url ?? 'Tab');
+  }
 </script>
 
 {#if tab?.url}
-  <li class="tab-container group">
-    <a class="link" href={tab.url} target="_blank">
+  <li
+    class="tab-container group"
+    draggable={current}
+    on:dragstart={handleDragStart}
+  >
+    <a
+      class="flex items-center gap-3 w-max max-w-[88%] hover:text-primary transition-colors"
+      href={tab.url}
+      target="_blank"
+    >
       {#if favIconUrl}
-        <img
-          style:width="1rem"
-          style:height="1rem"
-          style:max-width="1rem"
-          style:max-height="1rem"
-          src={favIconUrl}
-          alt=""
-          role="presentation"
-        />
+        <div
+          class="w-5 h-5 min-w-[1.25rem] rounded overflow-hidden flex items-center justify-center"
+        >
+          <img
+            class="w-4 h-4 object-contain"
+            src={favIconUrl}
+            alt=""
+            role="presentation"
+          />
+        </div>
       {:else}
-        <IconButton
-          icon={getFavIconType(tab.url)}
-          class="max-h-[1rem] min-h-[1rem] min-w-[1rem] max-w-[1rem] rounded-md text-lg {active ||
-            'text-neutral-content'}"
-        />
+        <span
+          class="material-symbols-outlined text-[18px] min-w-[1.25rem] {active ||
+            'text-on-surface-variant'}"
+        >
+          {iconMap[getFavIconType(tab.url)] ?? 'article'}
+        </span>
       {/if}
-      <span class="title {active}">
+      <span
+        class="overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium {active ||
+          'text-on-surface'}"
+      >
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
         {@html title}
       </span>
     </a>
 
-    <IconButton
-      icon={current ? 'close' : 'delete'}
+    <button
+      use:tooltip={{
+        title: i18n.getMessage(current ? 'labelClose' : 'labelDelete')
+      }}
+      class="ml-auto p-1 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all opacity-0 group-hover:opacity-100"
       title={i18n.getMessage(current ? 'labelClose' : 'labelDelete')}
-      class="ml-auto hidden text-xl text-error hover:text-error-focus group-hover:block"
       on:click={() => {
         if (current && tab.id) browser.tabs.remove(tab.id);
         else dispatch('delete', tab);
       }}
-    />
+    >
+      <span class="material-symbols-outlined text-[16px]"
+        >{current ? 'close' : 'delete'}</span
+      >
+    </button>
   </li>
 {/if}
-
-<style lang="postcss">
-  .link {
-    @apply flex w-max max-w-[90%] items-center gap-2;
-  }
-
-  .link:hover {
-    @apply underline;
-  }
-
-  .title {
-    @apply overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium;
-  }
-</style>

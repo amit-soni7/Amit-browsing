@@ -11,7 +11,7 @@
 <select
   name="sort-method"
   id="sort-method"
-  class="min-w-[5rem] rounded-md bg-neutral-3 p-1 text-center text-xs"
+  class="appearance-none rounded-lg bg-surface-container-high/80 border border-outline-variant/30 px-2.5 py-1 text-xs font-medium text-on-surface-variant hover:border-primary/30 hover:text-on-surface focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all cursor-pointer"
   value={$settings.sortMethod}
   on:change={(ev) => changeSortMethod(ev.currentTarget.value)}
 >

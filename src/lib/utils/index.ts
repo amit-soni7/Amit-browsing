@@ -11,6 +11,7 @@ export * from './theme';
 export * from './tooltip';
 export * from './viewport';
 export * from './backup';
+export * from './device';
 export * from './handleFilterListChange';
 export * from './getRelativeTime';
 export * from './input';

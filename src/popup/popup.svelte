@@ -1,9 +1,18 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { EXT_NAME, isPopup } from '@/lib/constants';
   import { settings } from '@/lib/stores/';
   import { openFullView } from '@utils/extension';
   import { CommandPalette, Header, Sessions } from '@/lib/components';
   import { isInputTarget } from '@/lib/utils';
+
+  if (isPopup) {
+    document.documentElement.classList.add('extension-popup');
+  }
+
+  onDestroy(() => {
+    document.documentElement.classList.remove('extension-popup');
+  });
 
   shouldLoadPopup();
 
@@ -46,12 +55,23 @@
   }}
 />
 
-<Header />
-<Sessions />
+<div class="popup-shell flex h-full w-full flex-col overflow-hidden bg-background">
+  <Header />
+  <Sessions />
+</div>
 <CommandPalette bind:open />
 
 <style>
   :global(html, body) {
     overflow: hidden;
+  }
+
+  :global(html.extension-popup),
+  :global(html.extension-popup body),
+  :global(html.extension-popup body #root) {
+    width: 800px;
+    min-width: 800px;
+    height: 520px;
+    min-height: 520px;
   }
 </style>

@@ -6,8 +6,11 @@ import {
   getStorage,
   setStorage,
   applyTheme,
+  bindSystemThemeListener,
+  getSystemDarkMode,
   log,
-  getStorageItem
+  getStorageItem,
+  resolveThemeMode
 } from '@/lib/utils';
 import { autoSaveDefaults } from '@/lib/constants';
 
@@ -21,8 +24,9 @@ export const settings = (() => {
   let loaded: Promise<ESettings>;
 
   const defaultSettings: ESettings = {
+    theme: 'system',
     popupView: true,
-    darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
+    darkMode: getSystemDarkMode(),
     selectionId: 'current',
     discarded: true,
     urlFilterList: undefined,
@@ -40,8 +44,11 @@ export const settings = (() => {
   const { subscribe, set, update } = writable(defaultSettings);
 
   init();
+  bindSystemThemeListener(() => currentThemeMode);
 
   storage.local.onChanged.addListener(onStorageChange);
+
+  let currentThemeMode = defaultSettings.theme;
 
   async function init() {
     if (loaded) {
@@ -54,10 +61,23 @@ export const settings = (() => {
     loaded = getStorage(defaultSettings);
 
     const settings = await loaded;
+    const hasTheme =
+      typeof (settings as Partial<ESettings>).theme === 'string';
+    const theme = hasTheme
+      ? settings.theme
+      : settings.darkMode
+        ? 'dark'
+        : 'light';
+
+    settings.theme = theme;
+    settings.darkMode = resolveThemeMode(theme);
+    currentThemeMode = theme;
 
     set(settings);
 
-    applyTheme(settings.darkMode, false);
+    applyTheme(theme, false);
+
+    if (!hasTheme) setStorage({ theme, darkMode: settings.darkMode });
 
     filterOptions.set({
       sortMethod: settings.sortMethod,
@@ -86,7 +106,14 @@ export const settings = (() => {
           changes[change]?.newValue ??
           defaultSettings[change as keyof ESettings];
 
-        if (change === 'darkMode') applyTheme(settings[change], true);
+        if (change === 'theme') {
+          currentThemeMode = settings.theme;
+          settings.darkMode = resolveThemeMode(settings.theme);
+          applyTheme(settings.theme, true);
+        }
+
+        if (change === 'darkMode' && !('theme' in changes))
+          applyTheme(settings[change], true);
 
         if (change === 'selectionId')
           sessions.selection.selectById(settings[change]);
@@ -116,6 +143,20 @@ export const settings = (() => {
 
       update((settings: ESettings) => {
         settings[key] = value;
+
+        return settings;
+      });
+    },
+    setTheme(theme: ESettings['theme']) {
+      const darkMode = resolveThemeMode(theme);
+
+      currentThemeMode = theme;
+      applyTheme(theme, true);
+      setStorage({ theme, darkMode });
+
+      update((settings: ESettings) => {
+        settings.theme = theme;
+        settings.darkMode = darkMode;
 
         return settings;
       });

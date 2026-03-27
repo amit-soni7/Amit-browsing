@@ -2,7 +2,6 @@ import { extension, isDEV } from './scripts/constants';
 import { defineConfig, type UserConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
-import UnoCSS from 'unocss/vite';
 
 export const sharedConfig: UserConfig = {
   define: {
@@ -32,7 +31,11 @@ export const sharedConfig: UserConfig = {
 export default defineConfig({
   ...sharedConfig,
 
-  plugins: [UnoCSS(), svelte()],
+  plugins: [svelte()],
+
+  server: {
+    cors: true
+  },
 
   build: {
     emptyOutDir: false,

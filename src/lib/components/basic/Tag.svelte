@@ -12,11 +12,11 @@
 <div
   style:background-color={bgColor}
   style:color={textColor}
-  class="flex min-h-full max-w-[7rem] flex-1 cursor-default items-center justify-center rounded-md bg-primary {className}"
+  class="flex min-h-full max-w-[7rem] flex-1 cursor-default items-center justify-center rounded-full {className}"
   use:tooltip={{ title: name }}
 >
   <span
-    class="overflow-hidden text-ellipsis whitespace-nowrap px-1 py-0.5 text-center text-xs font-semibold text-white"
+    class="overflow-hidden text-ellipsis whitespace-nowrap px-2 py-0.5 text-center text-[10px] font-bold uppercase tracking-wide"
     >{name}</span
   >
 </div>

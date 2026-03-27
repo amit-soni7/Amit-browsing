@@ -4,18 +4,18 @@
 </script>
 
 <div>
-  <p class="mb-4">
+  <p class="mb-5 text-sm text-on-surface-variant leading-relaxed">
     {i18n.getMessage('aboutDonateText')}
   </p>
 
-  <div class="flex flex-wrap gap-4">
-    <div class="flex h-20 w-full justify-center gap-4">
+  <div class="flex flex-wrap gap-5">
+    <div class="flex h-16 w-full justify-center gap-4">
       <a
         href="https://ko-fi.com/navorite"
         target="_blank"
-        class="h-full hover:brightness-110"
+        class="h-full hover:opacity-90 transition-opacity"
         ><img
-          class="h-full"
+          class="h-full rounded-lg"
           src="../../images/donate_kofi.webp"
           alt="Donate using Ko-fi.com"
         /></a
@@ -23,16 +23,16 @@
       <a
         href="https://www.patreon.com/navorite"
         target="_blank"
-        class="flex h-full items-center gap-2 rounded-md bg-[#f96854] p-2 font-bold text-black hover:brightness-125"
+        class="flex h-full items-center gap-2 rounded-xl bg-[#f96854] px-4 font-bold text-sm text-black hover:opacity-90 transition-opacity"
         ><img
-          class="h-8"
+          class="h-7"
           src="../../images/donate_patreon.png"
           alt="Donate using Patreon.com"
         />BECOME A PATRON</a
       >
     </div>
 
-    <div class="flex w-full justify-center gap-4">
+    <div class="flex w-full justify-center gap-5">
       <DonateCard
         title="Bitcoin (BTC)"
         src="../../images/btc-qr.png"

@@ -1,5 +1,10 @@
 import type { Manifest } from 'webextension-polyfill';
-import { extension, isFirefox } from '../scripts/constants';
+import {
+  extension,
+  googleOauthClientId,
+  googleOauthScopes,
+  isFirefox
+} from '../scripts/constants';
 
 export const manifest: Manifest.WebExtensionManifest = {
   manifest_version: 3,
@@ -21,13 +26,13 @@ export const manifest: Manifest.WebExtensionManifest = {
 
   background: isFirefox
     ? {
-        scripts: ['./src/background/background.js'],
-        type: 'module'
-      }
+      scripts: ['./src/background/background.js'],
+      type: 'module'
+    }
     : {
-        service_worker: './src/background/background.js',
-        type: 'module'
-      },
+      service_worker: './src/background/background.js',
+      type: 'module'
+    },
 
   options_ui: {
     page: './src/options/index.html',
@@ -45,6 +50,14 @@ export const manifest: Manifest.WebExtensionManifest = {
   },
 
   default_locale: 'en',
+
+  ...(!isFirefox &&
+    googleOauthClientId && {
+    oauth2: {
+      client_id: googleOauthClientId,
+      scopes: googleOauthScopes
+    }
+  }),
 
   ...(isFirefox && {
     browser_specific_settings: {

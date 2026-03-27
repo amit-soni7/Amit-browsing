@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { ESession, EWindow } from '@/lib/types';
+  import type { ESession, ETab, EWindow } from '@/lib/types';
   import { createEventDispatcher } from 'svelte';
   import { settings, filterOptions, sessions } from '@/lib/stores';
-  import { IconButton, Tag } from '@/lib/components';
+  import { Tag } from '@/lib/components';
   import {
     tooltip,
     sendMessage,
@@ -25,6 +25,8 @@
       })
     : session?.title;
 
+  let isDropTarget = false;
+
   async function openSession() {
     if (!session.windows[0]?.tabs?.length)
       session.windows = (await sessionsDB.loadSessionWindows(
@@ -39,14 +41,74 @@
 
     session.windows = { length: session.windows.length } as EWindow[];
   }
+
+  async function handleDrop(event: DragEvent) {
+    event.preventDefault();
+    isDropTarget = false;
+
+    const rawTab = event.dataTransfer?.getData('application/x-sessionic-tab');
+    if (!rawTab) return;
+
+    const droppedTab = JSON.parse(rawTab) as ETab;
+    if (!droppedTab.url || session.id === 'current') return;
+
+    if (!Array.isArray(session.windows)) {
+      session.windows = (await sessionsDB.loadSessionWindows(
+        session.id as UUID
+      )) as EWindow[];
+    }
+
+    if (!session.windows?.length) {
+      session.windows = [{ tabs: [] } as EWindow];
+    }
+
+    const targetWindow =
+      session.windows.find((window) => window.focused) ?? session.windows[0];
+
+    if (!targetWindow) return;
+
+    targetWindow.tabs ??= [];
+
+    const tabExists = targetWindow.tabs.some(
+      (tab) => tab.url === droppedTab.url && tab.title === droppedTab.title
+    );
+
+    if (tabExists) return;
+
+    targetWindow.tabs.push({
+      ...droppedTab,
+      active: false,
+      highlighted: false,
+      selected: false
+    });
+    session.tabsNumber += 1;
+
+    await sessions.put(session);
+  }
 </script>
 
-<li>
+<li class="mb-3 last:mb-0">
   <button
     class="session-container group {$selected?.id === session.id
-      ? '!bg-primary/30'
-      : ''}"
+      ? '!bg-primary/15 !border-primary/30 shadow-[0_0_12px_rgba(212,175,55,0.06)]'
+      : ''} {isDropTarget ? '!border-primary !bg-primary/10' : ''}"
     on:click={() => selected.select(session)}
+    on:dragenter={(event) => {
+      if (!event.dataTransfer?.types.includes('application/x-sessionic-tab'))
+        return;
+      isDropTarget = true;
+    }}
+    on:dragover={(event) => {
+      if (!event.dataTransfer?.types.includes('application/x-sessionic-tab'))
+        return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+      isDropTarget = true;
+    }}
+    on:dragleave={() => {
+      isDropTarget = false;
+    }}
+    on:drop={handleDrop}
   >
     <div class="session-info">
       <button
@@ -58,37 +120,51 @@
         {@html title}
       </button>
 
-      <IconButton
-        icon="rename"
-        title={i18n.getMessage('labelRename')}
-        class="ml-auto hidden text-xl  hover:text-primary-focus group-hover:block"
-        on:click={() => {
-          dispatch('renameModal');
-        }}
-      />
+      <div
+        class="ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <button
+          use:tooltip={{ title: i18n.getMessage('labelRename') }}
+          class="p-1 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all"
+          title={i18n.getMessage('labelRename')}
+          on:click|stopPropagation={() => dispatch('renameModal')}
+        >
+          <span class="material-symbols-outlined text-[16px]">edit</span>
+        </button>
 
-      <IconButton
-        icon={session?.tags ? 'untag' : 'tag'}
-        title={i18n.getMessage(session.tags ? 'labelRemoveTag' : 'labelAddTag')}
-        class="hidden text-xl hover:text-primary-focus group-hover:block"
-        on:click={() => {
-          if (!session?.tags) return dispatch('tagsModal');
+        <button
+          use:tooltip={{
+            title: i18n.getMessage(
+              session.tags ? 'labelRemoveTag' : 'labelAddTag'
+            )
+          }}
+          class="p-1 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all"
+          title={i18n.getMessage(
+            session.tags ? 'labelRemoveTag' : 'labelAddTag'
+          )}
+          on:click|stopPropagation={() => {
+            if (!session?.tags) return dispatch('tagsModal');
+            delete session.tags;
+            sessions.put(session);
+          }}
+        >
+          <span class="material-symbols-outlined text-[16px]"
+            >{session?.tags ? 'label_off' : 'label'}</span
+          >
+        </button>
 
-          delete session.tags;
-
-          sessions.put(session);
-        }}
-      />
-
-      <IconButton
-        icon="delete"
-        title={i18n.getMessage('labelDelete')}
-        class="hidden text-xl text-error hover:text-error-focus group-hover:block"
-        on:click={() => dispatch('deleteModal')}
-      />
+        <button
+          use:tooltip={{ title: i18n.getMessage('labelDelete') }}
+          class="p-1 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all"
+          title={i18n.getMessage('labelDelete')}
+          on:click|stopPropagation={() => dispatch('deleteModal')}
+        >
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+        </button>
+      </div>
     </div>
 
-    <div class="mt-2 flex w-full flex-1 gap-2">
+    <div class="mt-1 flex w-full flex-1 items-center gap-2">
       <div
         class="session-card"
         use:tooltip={{
@@ -97,7 +173,7 @@
           )}`
         }}
       >
-        <IconButton icon="window" class="text-sm" role="img" />
+        <span class="material-symbols-outlined text-[13px]">web_asset</span>
         {session?.windows?.length}
       </div>
 
@@ -109,7 +185,7 @@
           )}`
         }}
       >
-        <IconButton icon="tab" class="text-sm" role="img" />
+        <span class="material-symbols-outlined text-[13px]">tab</span>
         {session?.tabsNumber}
       </div>
 
@@ -125,7 +201,7 @@
             })}`
           }}
         >
-          <IconButton icon="history" class="text-sm" role="img" />
+          <span class="material-symbols-outlined text-[13px]">schedule</span>
           {getRelativeTime(session.dateSaved)}
         </div>
       {/if}

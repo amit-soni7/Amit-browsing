@@ -9,28 +9,33 @@
   const commands = [
     {
       title: 'Save current session',
+      icon: 'save',
       action: () => sessions.add($currentSession)
     },
     {
       title: 'Delete selected session',
+      icon: 'delete',
       action: () => sessions.remove($selected)
     },
-    { title: 'Delete all sessions', action: sessions.removeAll }
+    { title: 'Delete all sessions', icon: 'delete_sweep', action: sessions.removeAll }
   ];
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <Modal bind:open>
-  <ul slot="content" class="flex flex-col gap-2 font-semibold">
+  <ul slot="content" class="flex flex-col gap-1">
     {#each commands as command}
       <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
       <li
-        class="hover:bg-primary-5 cursor-pointer rounded-md px-4 py-2"
+        class="flex items-center gap-3 cursor-pointer rounded-xl px-4 py-3 text-sm font-medium text-on-surface hover:bg-primary/10 hover:text-primary transition-all"
         on:click={() => {
           command.action();
           open = false;
         }}
       >
+        <span class="material-symbols-outlined text-[20px] text-on-surface-variant"
+          >{command.icon}</span
+        >
         {command.title}
       </li>
     {/each}
