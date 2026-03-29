@@ -3,7 +3,7 @@
   import type { ETab, EWindow } from '@/lib/types';
   import { createEventDispatcher } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { settings } from '@/lib/stores';
+  import { settings, sessions } from '@/lib/stores';
   import { TabItem } from '@/lib/components';
   import { tooltip, sendMessage } from '@/lib/utils';
 
@@ -15,17 +15,61 @@
 
   export let current = false;
   export let fill = false;
+  export let viewMode: 'list' | 'card' = 'list';
+  export let windowIndex = 0;
 
   let collapsed = false;
+  let isDropTarget = false;
+  $: selection = sessions.selection;
+  $: selectedSessionId = $selection?.id ?? 'current';
 
   $: active = window?.focused ? 'text-primary' : '';
+
+  async function handleDrop(event: DragEvent) {
+    event.preventDefault();
+    isDropTarget = false;
+
+    const rawTab = event.dataTransfer?.getData('application/x-sessionic-tab');
+    if (!rawTab || $selection?.id === 'current') return;
+
+    const payload = JSON.parse(rawTab) as {
+      tab: ETab;
+      sourceSessionId: string;
+      sourceWindowIndex: number;
+      sourceTabIndex: number;
+    };
+
+    await sessions.moveTab(
+      payload,
+      $selection.id as string,
+      windowIndex
+    );
+  }
 </script>
 
 {#if window?.tabs?.length}
   <li
     class="rounded-xl overflow-hidden glass-panel {fill
       ? 'flex h-full min-h-0 flex-col'
+      : ''} {isDropTarget
+      ? '!border-primary !bg-primary/10 shadow-[0_0_0_2px_rgba(var(--primary),0.12)]'
       : ''}"
+    on:dragenter={(event) => {
+      if (!event.dataTransfer?.types.includes('application/x-sessionic-tab'))
+        return;
+      isDropTarget = true;
+    }}
+    on:dragover={(event) => {
+      if (!event.dataTransfer?.types.includes('application/x-sessionic-tab'))
+        return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      isDropTarget = true;
+    }}
+    on:dragleave={() => {
+      isDropTarget = false;
+    }}
+    on:drop={handleDrop}
   >
     <div
       class="group flex items-center gap-3 px-4 py-3 w-full bg-surface-container-high/40 hover:bg-surface-container-high/70 transition-all"
@@ -108,13 +152,23 @@
 
     {#if !collapsed && window && window.tabs}
       <ul
-        class="flex flex-col gap-0.5 p-2 {fill
+        class="{viewMode === 'card'
+          ? 'grid auto-rows-[17.5rem] grid-cols-1 justify-start gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+          : 'flex flex-col gap-0.5 p-2'} {fill
           ? 'min-h-0 flex-1 overflow-y-auto'
           : ''}"
         transition:fade={{ duration: 200 }}
       >
-        {#each window.tabs as tab}
-          <TabItem {tab} on:delete {current} />
+        {#each window.tabs as tab, tabIndex}
+          <TabItem
+            {tab}
+            on:delete
+            {current}
+            {viewMode}
+            sourceSessionId={selectedSessionId}
+            sourceWindowIndex={windowIndex}
+            sourceTabIndex={tabIndex}
+          />
         {/each}
       </ul>
     {/if}

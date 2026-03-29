@@ -2,13 +2,11 @@ export { auth, db, isFirebaseConfigured } from './config';
 export { signInWithGoogle, signOut, onAuthChange, getCurrentUser } from './auth';
 export {
   syncSavedSessionToCloud,
-  syncRecoverySnapshotToCloud,
-  syncClosedItemToCloud,
+  syncCurrentSessionToCloud,
   deleteSavedSessionFromCloud,
-  deleteRecoverySnapshotFromCloud,
-  deleteClosedItemFromCloud,
   subscribeToSavedSessions,
-  subscribeToRecoverySnapshots,
-  subscribeToClosedItems,
+  subscribeToPreferences,
+  syncPreferencesToCloud,
+  upsertDeviceToCloud,
   ensureUserDocument
 } from './firestore';

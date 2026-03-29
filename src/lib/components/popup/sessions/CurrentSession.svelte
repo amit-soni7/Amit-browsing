@@ -1,10 +1,9 @@
 <script lang="ts">
   import browser, { i18n } from 'webextension-polyfill';
-  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { settings, sessions, currentSession as session } from '@/lib/stores';
+  import { authStore } from '@/lib/stores/auth';
   import { tooltip, getSession, isExtensionViewed } from '@/lib/utils';
-
-  const dispatch = createEventDispatcher();
 
   let timeout: NodeJS.Timeout;
 
@@ -94,6 +93,8 @@
         url: $settings.urlFilterList
       });
 
+      authStore.pushCurrentSession($session);
+
       if ($settings.selectionId === 'current')
         selection.selectById($session.id);
     }, 50);
@@ -101,16 +102,6 @@
 </script>
 
 <div class="mb-3 flex flex-col gap-3">
-  <button
-    use:tooltip={{ title: i18n.getMessage('labelSave') }}
-    class="inline-flex w-fit items-center gap-2 rounded-xl border border-primary/20 bg-surface-container-high px-4 py-2.5 text-sm font-bold text-primary shadow-lg shadow-primary/10 transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary-focus"
-    title={i18n.getMessage('labelSave')}
-    on:click|stopPropagation={() => dispatch('save')}
-  >
-    <span class="material-symbols-outlined text-[22px]">save</span>
-    <span>{i18n.getMessage('labelSave')}</span>
-  </button>
-
   <div
     class="group flex w-full items-center gap-3 rounded-xl border p-3 pr-12 transition-all duration-200 {selected
       ? 'bg-primary/15 border-primary/30 shadow-[0_0_15px_rgba(212,175,55,0.08)]'

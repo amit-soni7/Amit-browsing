@@ -22,8 +22,16 @@ export function openOptions() {
 }
 
 // Open the Popup page
-export function openFullView() {
-  return openExtensionPage('popup', '?tab=true');
+export async function openFullView() {
+  const [currentTab] = await browser.tabs.query({
+    active: true,
+    currentWindow: true
+  });
+
+  return browser.runtime.sendMessage({
+    message: 'openDashboardTab',
+    windowId: currentTab?.windowId
+  });
 }
 
 // Open an extension page, under a unique ID to prevent duplicate tabs

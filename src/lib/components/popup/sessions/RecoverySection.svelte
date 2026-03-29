@@ -1,7 +1,13 @@
 <script lang="ts">
-  import { closedItems, recoverySnapshots, settings } from '@/lib/stores';
+  import { closedItems, recoverySnapshots, settings, sessions } from '@/lib/stores';
   import type { EClosedItem, ESession } from '@/lib/types';
   import { getRelativeTime, sendMessage, tooltip } from '@/lib/utils';
+
+  $: selection = sessions.selection;
+
+  function previewSession(session: ESession) {
+    sessions.selection.set(session);
+  }
 
   function restoreSnapshot(session: ESession) {
     sendMessage({
@@ -43,9 +49,19 @@
     {#if $recoverySnapshots.length}
       <div class="flex flex-col gap-2">
         {#each $recoverySnapshots as snapshot}
-          <button
-            class="session-container text-left"
-            on:click={() => restoreSnapshot(snapshot)}
+          <div
+            class="session-container text-left {$selection?.id === snapshot.id
+              ? '!bg-primary/15 !border-primary/30 shadow-[0_0_12px_rgba(212,175,55,0.06)]'
+              : ''}"
+            role="button"
+            tabindex="0"
+            on:click={() => previewSession(snapshot)}
+            on:keydown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                previewSession(snapshot);
+              }
+            }}
           >
             <div class="session-info">
               <div class="session-name text-sm">
@@ -75,8 +91,15 @@
                 <span class="material-symbols-outlined text-[13px]">schedule</span>
                 {getRelativeTime(snapshot.updatedAt ?? snapshot.dateSaved ?? Date.now())}
               </div>
+              <button
+                class="ml-auto rounded-lg p-1 text-on-surface-variant transition-all hover:bg-primary/10 hover:text-primary"
+                use:tooltip={{ title: 'Open recovered workspace' }}
+                on:click|stopPropagation={() => restoreSnapshot(snapshot)}
+              >
+                <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+              </button>
             </div>
-          </button>
+          </div>
         {/each}
       </div>
     {/if}
@@ -84,8 +107,18 @@
     {#if $closedItems.length}
       <div class="flex flex-col gap-2">
         {#each $closedItems as item}
-          <div class="session-container">
-            <button class="session-info text-left" on:click={() => restoreClosedItem(item)}>
+          <div
+            class="session-container {item.itemType === 'window' &&
+            $selection?.id === item.session?.id
+              ? '!bg-primary/15 !border-primary/30 shadow-[0_0_12px_rgba(212,175,55,0.06)]'
+              : ''}"
+          >
+            <button
+              class="session-info text-left"
+              on:click={() => {
+                if (item.itemType === 'window' && item.session) previewSession(item.session);
+              }}
+            >
               <div class="session-name text-sm">{item.title}</div>
               <span class="rounded-full bg-surface-container-high px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">
                 {item.itemType === 'window' ? 'closed window' : 'closed tab'}
@@ -107,6 +140,18 @@
                 <span class="material-symbols-outlined text-[13px]">history</span>
                 {getRelativeTime(item.closedAt)}
               </div>
+              <button
+                class="rounded-lg p-1 text-on-surface-variant transition-all hover:bg-primary/10 hover:text-primary"
+                use:tooltip={{
+                  title:
+                    item.itemType === 'window'
+                      ? 'Open recovered window'
+                      : 'Reopen closed tab'
+                }}
+                on:click|stopPropagation={() => restoreClosedItem(item)}
+              >
+                <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+              </button>
               <button
                 class="ml-auto rounded-lg p-1 text-on-surface-variant transition-all hover:bg-error/10 hover:text-error"
                 on:click={() => closedItems.remove(item)}

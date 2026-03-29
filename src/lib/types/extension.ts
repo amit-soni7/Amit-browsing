@@ -74,6 +74,7 @@ export type URLFilterList = string[] | ['<all_urls>'] | undefined;
 
 export type SortMethod = 'newest' | 'oldest' | 'az' | 'za';
 export type ThemeMode = 'system' | 'dark' | 'light';
+export type TabGroupType = 'current' | 'saved' | 'temporary';
 
 export interface EClosedItem {
   id: UUID | string;
@@ -94,6 +95,11 @@ export interface ESettings {
   theme: ThemeMode;
   darkMode: boolean;
   popupView: boolean;
+  dashboardEnabled: boolean;
+  dashboardTabId?: number;
+  dashboardWindowId?: number;
+  dashboardLastWindowId?: number;
+  dashboardLastOpenedAt?: number;
   selectionId: 'current' | UUID;
   discarded: boolean;
   urlFilterList: URLFilterList;
@@ -113,4 +119,77 @@ export interface ESettings {
   exportCompressed: boolean;
   sortMethod: SortMethod;
   tagsFilter: '__all__' | (string & NonNullable<unknown>);
+}
+
+export interface UserProfileDoc {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  createdAt?: number;
+  updatedAt?: number;
+  lastActiveAt?: number;
+}
+
+export interface PreferencesDoc {
+  theme: ThemeMode;
+  tabViewMode: 'list' | 'card';
+  sidebarWidth: number;
+  openTabBehavior: 'new_tab';
+  sortGroupsBy: SortMethod;
+  updatedAt?: number;
+}
+
+export interface DeviceDoc {
+  deviceId: string;
+  deviceName: string;
+  browser: string;
+  platform: string;
+  extensionVersion: string;
+  lastSeenAt?: number;
+  lastSyncAt?: number;
+  createdAt?: number;
+}
+
+export interface TabGroupDoc {
+  title: string;
+  normalizedTitle: string;
+  tags: string[];
+  type: TabGroupType;
+  isCurrentSession: boolean;
+  isPinned: boolean;
+  isArchived: boolean;
+  isDeleted: boolean;
+  sortOrder: number;
+  tabCount: number;
+  preview: {
+    firstTabTitle: string;
+    firstTabUrl: string;
+    firstFaviconUrl: string;
+  } | null;
+  createdByDeviceId: string;
+  updatedByDeviceId: string;
+  version: number;
+  createdAt?: number;
+  updatedAt?: number;
+  lastOpenedAt?: number;
+}
+
+export interface TabDoc {
+  title: string;
+  url: string;
+  normalizedUrl: string;
+  faviconUrl: string;
+  index: number;
+  windowIndex: number;
+  pinned: boolean;
+  muted: boolean;
+  isDeleted: boolean;
+  browserTabId?: number;
+  windowId?: number;
+  createdByDeviceId: string;
+  updatedByDeviceId: string;
+  version: number;
+  createdAt?: number;
+  updatedAt?: number;
 }

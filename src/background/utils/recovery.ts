@@ -9,12 +9,16 @@ import { recoveryDefaults } from '@/lib/constants/shared';
 let latestSessionCache: ESession | null = null;
 let snapshotTimeout: NodeJS.Timeout | null = null;
 
+function notify(message: 'notifyRecoverySnapshots' | 'notifyClosedItems') {
+  return sendMessage({ message }).catch(() => undefined);
+}
+
 function notifyRecoverySnapshots() {
-  sendMessage({ message: 'notifyRecoverySnapshots' });
+  notify('notifyRecoverySnapshots');
 }
 
 function notifyClosedItems() {
-  sendMessage({ message: 'notifyClosedItems' });
+  notify('notifyClosedItems');
 }
 
 export async function refreshSessionCache() {

@@ -13,6 +13,22 @@ import {
   recordClosedEntity,
   refreshSessionCache
 } from './utils/recovery';
+import {
+  openDashboardTab,
+  rememberFocusedWindow,
+  handleDashboardTabRemoved,
+  handleDashboardTabChanged
+} from './utils/dashboard';
+
+function safeNotify(
+  message: 'notifyChangeDB' | 'notifyRecoverySnapshots',
+  payload?: Record<string, unknown>
+) {
+  return sendMessage({
+    message,
+    ...payload
+  }).catch(() => undefined);
+}
 
 async function createTimer() {
   const [settings, alarm] = await Promise.all([
@@ -58,14 +74,13 @@ browser.alarms.onAlarm.addListener(async (alarm) => {
       sessionsDB.deleteLastAutosavedSession(count - autoSaveMaxSessions);
 
     sessionsDB.streamSessions('dateSaved', (sessions) => {
-      sendMessage({
-        message: 'notifyChangeDB',
+      safeNotify('notifyChangeDB', {
         sessions,
         selectedId: selectionId
       });
     });
 
-    sendMessage({ message: 'notifyRecoverySnapshots' });
+    safeNotify('notifyRecoverySnapshots');
   }
 });
 
@@ -73,16 +88,39 @@ const queueTabSnapshot = () => queueWorkspaceSnapshot('startup-shutdown');
 
 browser.windows.onCreated.addListener(queueTabSnapshot);
 browser.windows.onRemoved.addListener(queueTabSnapshot);
-browser.windows.onFocusChanged.addListener(queueTabSnapshot);
+browser.windows.onFocusChanged.addListener((windowId) => {
+  queueTabSnapshot();
+  rememberFocusedWindow(windowId);
+});
 browser.tabs.onCreated.addListener(() => queueWorkspaceSnapshot('startup-shutdown'));
-browser.tabs.onUpdated.addListener(() => queueWorkspaceSnapshot('startup-shutdown'));
+browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  queueWorkspaceSnapshot('startup-shutdown');
+
+  if (
+    typeof changeInfo.pinned === 'boolean' ||
+    typeof changeInfo.url === 'string' ||
+    changeInfo.status === 'complete'
+  ) {
+    handleDashboardTabChanged(tabId, tab);
+  }
+});
 browser.tabs.onActivated.addListener(() => queueWorkspaceSnapshot('startup-shutdown'));
-browser.tabs.onMoved.addListener(() => queueWorkspaceSnapshot('startup-shutdown'));
-browser.tabs.onAttached.addListener(() => queueWorkspaceSnapshot('startup-shutdown'));
-browser.tabs.onDetached.addListener(() => queueWorkspaceSnapshot('startup-shutdown'));
-browser.tabs.onRemoved.addListener((tabId, removeInfo) => {
+browser.tabs.onMoved.addListener((tabId) => {
+  queueWorkspaceSnapshot('startup-shutdown');
+  handleDashboardTabChanged(tabId);
+});
+browser.tabs.onAttached.addListener((tabId) => {
+  queueWorkspaceSnapshot('startup-shutdown');
+  handleDashboardTabChanged(tabId);
+});
+browser.tabs.onDetached.addListener((tabId) => {
+  queueWorkspaceSnapshot('startup-shutdown');
+  handleDashboardTabChanged(tabId);
+});
+browser.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   recordClosedEntity(tabId, removeInfo.windowId, removeInfo.isWindowClosing);
   queueWorkspaceSnapshot(removeInfo.isWindowClosing ? 'window-close' : 'tab-close');
+  await handleDashboardTabRemoved(tabId);
 });
 
 browser.runtime.onInstalled.addListener((details) => {
@@ -178,6 +216,10 @@ browser.runtime.onMessage.addListener((request) => {
     case 'createTimer': {
       createTimer();
       break;
+    }
+
+    case 'openDashboardTab': {
+      return openDashboardTab(request.windowId);
     }
   }
 });

@@ -1,23 +1,24 @@
 import { writable, get } from 'svelte/store';
 import type { User } from 'firebase/auth';
+import browser from 'webextension-polyfill';
 import {
   signInWithGoogle,
   signOut,
   onAuthChange,
   ensureUserDocument,
   subscribeToSavedSessions,
-  subscribeToRecoverySnapshots,
-  subscribeToClosedItems,
+  subscribeToPreferences,
   syncSavedSessionToCloud,
-  syncRecoverySnapshotToCloud,
-  syncClosedItemToCloud,
+  syncCurrentSessionToCloud,
+  syncPreferencesToCloud,
+  upsertDeviceToCloud,
   deleteSavedSessionFromCloud,
-  deleteRecoverySnapshotFromCloud,
-  deleteClosedItemFromCloud,
   isFirebaseConfigured
 } from '@/lib/firebase';
-import type { EClosedItem, ESession } from '@/lib/types';
+import type { DeviceDoc, ESession, ESettings, PreferencesDoc } from '@/lib/types';
 import { log } from '@/lib/utils/log';
+import { getDeviceId } from '@/lib/utils';
+import { sessionsDB } from '@/lib/utils/database';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
 
@@ -26,6 +27,21 @@ interface AuthState {
   loading: boolean;
   syncStatus: SyncStatus;
   error: string | null;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function getSyncStatusForError(error: unknown): SyncStatus {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: string }).code === 'unavailable'
+  )
+    ? 'offline'
+    : 'error';
 }
 
 function createAuthStore() {
@@ -37,75 +53,165 @@ function createAuthStore() {
   });
 
   let savedUnsubscribe: (() => void) | null = null;
-  let recoveryUnsubscribe: (() => void) | null = null;
-  let closedItemsUnsubscribe: (() => void) | null = null;
+  let preferencesUnsubscribe: (() => void) | null = null;
 
   let savedSessionsCallback: ((sessions: ESession[]) => void) | null = null;
-  let recoverySnapshotsCallback: ((sessions: ESession[]) => void) | null = null;
-  let closedItemsCallback: ((items: EClosedItem[]) => void) | null = null;
+  let preferencesCallback: ((preferences: PreferencesDoc | null) => void) | null =
+    null;
+
+  async function pushSavedSession(session: ESession) {
+    const { user } = get({ subscribe });
+    if (!user || !isFirebaseConfigured) return;
+
+    update((s) => ({ ...s, syncStatus: 'syncing', error: null }));
+
+    try {
+      const deviceId = await getDeviceId();
+      await syncSavedSessionToCloud(user.uid, session, deviceId);
+      update((s) => ({ ...s, syncStatus: 'synced' }));
+    } catch (error) {
+      const message = getErrorMessage(error, 'Session sync failed');
+      update((s) => ({
+        ...s,
+        syncStatus: getSyncStatusForError(error),
+        error: message
+      }));
+      log.error('[authStore] pushSavedSession error:', error);
+    }
+  }
+
+  async function pushCurrentSession(session: ESession) {
+    const { user } = get({ subscribe });
+    if (!user || !isFirebaseConfigured) return;
+
+    try {
+      const deviceId = await getDeviceId();
+      await syncCurrentSessionToCloud(user.uid, session, deviceId);
+    } catch (error) {
+      update((s) => ({
+        ...s,
+        syncStatus: getSyncStatusForError(error),
+        error: getErrorMessage(error, 'Current session sync failed')
+      }));
+      log.error('[authStore] pushCurrentSession error:', error);
+    }
+  }
+
+  async function pushPreferences(settings: ESettings) {
+    const { user } = get({ subscribe });
+    if (!user || !isFirebaseConfigured) return;
+
+    try {
+      await syncPreferencesToCloud(user.uid, settings);
+    } catch (error) {
+      update((s) => ({
+        ...s,
+        syncStatus: getSyncStatusForError(error),
+        error: getErrorMessage(error, 'Preferences sync failed')
+      }));
+      log.error('[authStore] pushPreferences error:', error);
+    }
+  }
+
+  async function removeSavedSession(sessionId: string) {
+    const { user } = get({ subscribe });
+    if (!user || !isFirebaseConfigured) return;
+
+    try {
+      await deleteSavedSessionFromCloud(user.uid, sessionId);
+    } catch (error) {
+      update((s) => ({
+        ...s,
+        syncStatus: getSyncStatusForError(error),
+        error: getErrorMessage(error, 'Delete sync failed')
+      }));
+      log.error('[authStore] removeSavedSession error:', error);
+    }
+  }
 
   const unsubscribeAuth = onAuthChange(async (user) => {
     if (user) {
-      update((s) => ({ ...s, user, loading: false }));
+      update((s) => ({ ...s, user, loading: false, error: null }));
 
-      await ensureUserDocument(
-        user.uid,
-        user.email,
-        user.displayName,
-        user.photoURL
-      );
+      try {
+        await ensureUserDocument(
+          user.uid,
+          user.email,
+          user.displayName,
+          user.photoURL
+        );
 
-      if (savedSessionsCallback) startSavedSync(user.uid, savedSessionsCallback);
-      if (recoverySnapshotsCallback)
-        startRecoverySync(user.uid, recoverySnapshotsCallback);
-      if (closedItemsCallback) startClosedItemsSync(user.uid, closedItemsCallback);
+        const deviceId = await getDeviceId();
+        const platform = await browser.runtime.getPlatformInfo();
+        const deviceDoc: DeviceDoc = {
+          deviceId,
+          deviceName: `${platform.os}-${platform.arch}`,
+          browser: 'Chrome',
+          platform: platform.os,
+          extensionVersion: __EXT_VER__
+        };
+
+        await upsertDeviceToCloud(user.uid, deviceDoc);
+
+        if (savedSessionsCallback) startSavedSync(user.uid, savedSessionsCallback);
+        if (preferencesCallback)
+          startPreferencesSync(user.uid, preferencesCallback);
+
+        const localSaved = await sessionsDB.loadSessions();
+        await Promise.all(localSaved.map((session) => pushSavedSession(session)));
+      } catch (error) {
+        update((s) => ({
+          ...s,
+          loading: false,
+          syncStatus: getSyncStatusForError(error),
+          error: getErrorMessage(error, 'Auth initialization failed')
+        }));
+        log.error('[authStore] auth initialization error:', error);
+      }
     } else {
       savedUnsubscribe?.();
-      recoveryUnsubscribe?.();
-      closedItemsUnsubscribe?.();
+      preferencesUnsubscribe?.();
       savedUnsubscribe = null;
-      recoveryUnsubscribe = null;
-      closedItemsUnsubscribe = null;
+      preferencesUnsubscribe = null;
       update((s) => ({ ...s, user: null, loading: false, syncStatus: 'idle' }));
     }
   });
 
   function startSavedSync(uid: string, onSessions: (sessions: ESession[]) => void) {
     savedUnsubscribe?.();
-    update((s) => ({ ...s, syncStatus: 'syncing' }));
+    update((s) => ({ ...s, syncStatus: 'syncing', error: null }));
     savedUnsubscribe = subscribeToSavedSessions(
       uid,
       (sessions) => {
-        update((s) => ({ ...s, syncStatus: 'synced' }));
+        update((s) => ({ ...s, syncStatus: 'synced', error: null }));
         onSessions(sessions);
       },
-      () => update((s) => ({ ...s, syncStatus: 'error' }))
+      (error) =>
+        update((s) => ({
+          ...s,
+          syncStatus: getSyncStatusForError(error),
+          error: getErrorMessage(error, 'Saved sessions sync failed')
+        }))
     );
   }
 
-  function startRecoverySync(uid: string, onSessions: (sessions: ESession[]) => void) {
-    recoveryUnsubscribe?.();
-    update((s) => ({ ...s, syncStatus: 'syncing' }));
-    recoveryUnsubscribe = subscribeToRecoverySnapshots(
+  function startPreferencesSync(
+    uid: string,
+    onPreferences: (preferences: PreferencesDoc | null) => void
+  ) {
+    preferencesUnsubscribe?.();
+    preferencesUnsubscribe = subscribeToPreferences(
       uid,
-      (sessions) => {
-        update((s) => ({ ...s, syncStatus: 'synced' }));
-        onSessions(sessions);
+      (preferences) => {
+        update((s) => ({ ...s, error: null }));
+        onPreferences(preferences);
       },
-      () => update((s) => ({ ...s, syncStatus: 'error' }))
-    );
-  }
-
-  function startClosedItemsSync(uid: string, onItems: (items: EClosedItem[]) => void) {
-    closedItemsUnsubscribe?.();
-    update((s) => ({ ...s, syncStatus: 'syncing' }));
-    closedItemsUnsubscribe = subscribeToClosedItems(
-      uid,
-      (items) => {
-        update((s) => ({ ...s, syncStatus: 'synced' }));
-        onItems(items);
-      },
-      () => update((s) => ({ ...s, syncStatus: 'error' }))
+      (error) =>
+        update((s) => ({
+          ...s,
+          syncStatus: getSyncStatusForError(error),
+          error: getErrorMessage(error, 'Preferences sync failed')
+        }))
     );
   }
 
@@ -116,22 +222,17 @@ function createAuthStore() {
       const { user } = get({ subscribe });
       if (user) startSavedSync(user.uid, callback);
     },
-    onRecoverySnapshots(callback: (sessions: ESession[]) => void) {
-      recoverySnapshotsCallback = callback;
+    onPreferences(callback: (preferences: PreferencesDoc | null) => void) {
+      preferencesCallback = callback;
       const { user } = get({ subscribe });
-      if (user) startRecoverySync(user.uid, callback);
-    },
-    onClosedItems(callback: (items: EClosedItem[]) => void) {
-      closedItemsCallback = callback;
-      const { user } = get({ subscribe });
-      if (user) startClosedItemsSync(user.uid, callback);
+      if (user) startPreferencesSync(user.uid, callback);
     },
     async login() {
       update((s) => ({ ...s, loading: true, error: null }));
       try {
         await signInWithGoogle();
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Login failed';
+        const msg = getErrorMessage(err, 'Login failed');
         update((s) => ({ ...s, loading: false, error: msg }));
         log.error('[authStore] login error:', err);
       }
@@ -140,8 +241,7 @@ function createAuthStore() {
       update((s) => ({ ...s, loading: true }));
       try {
         savedUnsubscribe?.();
-        recoveryUnsubscribe?.();
-        closedItemsUnsubscribe?.();
+        preferencesUnsubscribe?.();
         await signOut();
       } catch (err) {
         log.error('[authStore] logout error:', err);
@@ -149,46 +249,13 @@ function createAuthStore() {
         update((s) => ({ ...s, loading: false }));
       }
     },
-    async pushSavedSession(session: ESession) {
-      const { user } = get({ subscribe });
-      if (!user || !isFirebaseConfigured) return;
-      update((s) => ({ ...s, syncStatus: 'syncing' }));
-      await syncSavedSessionToCloud(user.uid, session);
-      update((s) => ({ ...s, syncStatus: 'synced' }));
-    },
-    async pushRecoverySnapshot(session: ESession) {
-      const { user } = get({ subscribe });
-      if (!user || !isFirebaseConfigured) return;
-      update((s) => ({ ...s, syncStatus: 'syncing' }));
-      await syncRecoverySnapshotToCloud(user.uid, session);
-      update((s) => ({ ...s, syncStatus: 'synced' }));
-    },
-    async pushClosedItem(item: EClosedItem) {
-      const { user } = get({ subscribe });
-      if (!user || !isFirebaseConfigured) return;
-      update((s) => ({ ...s, syncStatus: 'syncing' }));
-      await syncClosedItemToCloud(user.uid, item);
-      update((s) => ({ ...s, syncStatus: 'synced' }));
-    },
-    async removeSavedSession(sessionId: string) {
-      const { user } = get({ subscribe });
-      if (!user || !isFirebaseConfigured) return;
-      await deleteSavedSessionFromCloud(user.uid, sessionId);
-    },
-    async removeRecoverySnapshot(sessionId: string) {
-      const { user } = get({ subscribe });
-      if (!user || !isFirebaseConfigured) return;
-      await deleteRecoverySnapshotFromCloud(user.uid, sessionId);
-    },
-    async removeClosedItem(itemId: string) {
-      const { user } = get({ subscribe });
-      if (!user || !isFirebaseConfigured) return;
-      await deleteClosedItemFromCloud(user.uid, itemId);
-    },
+    pushSavedSession,
+    pushCurrentSession,
+    pushPreferences,
+    removeSavedSession,
     destroy() {
       savedUnsubscribe?.();
-      recoveryUnsubscribe?.();
-      closedItemsUnsubscribe?.();
+      preferencesUnsubscribe?.();
       unsubscribeAuth();
     }
   };

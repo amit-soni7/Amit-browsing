@@ -1,7 +1,8 @@
 import { i18n, storage, type Storage } from 'webextension-polyfill';
 import type { ESettings, FilterOptions } from '@/lib/types';
-import { writable, type Writable } from 'svelte/store';
+import { get, writable, type Writable } from 'svelte/store';
 import { notification, sessions } from '@/lib/stores';
+import { authStore } from '@/lib/stores/auth';
 import {
   getStorage,
   setStorage,
@@ -22,10 +23,16 @@ export const filterOptions: Writable<FilterOptions> = writable({
 
 export const settings = (() => {
   let loaded: Promise<ESettings>;
+  let applyingRemotePreferences = false;
 
   const defaultSettings: ESettings = {
     theme: 'system',
     popupView: true,
+    dashboardEnabled: true,
+    dashboardTabId: undefined,
+    dashboardWindowId: undefined,
+    dashboardLastWindowId: undefined,
+    dashboardLastOpenedAt: undefined,
     darkMode: getSystemDarkMode(),
     selectionId: 'current',
     discarded: true,
@@ -42,6 +49,28 @@ export const settings = (() => {
   };
 
   const { subscribe, set, update } = writable(defaultSettings);
+
+  authStore.onPreferences(async (preferences) => {
+    if (!preferences) {
+      await authStore.pushPreferences(get({ subscribe }));
+      return;
+    }
+
+    const current = get({ subscribe });
+    const patch: Partial<ESettings> = {};
+
+    if (preferences.theme && preferences.theme !== current.theme)
+      patch.theme = preferences.theme;
+
+    if (preferences.sortGroupsBy && preferences.sortGroupsBy !== current.sortMethod)
+      patch.sortMethod = preferences.sortGroupsBy;
+
+    if (!Object.keys(patch).length) return;
+
+    applyingRemotePreferences = true;
+    await setStorage(patch);
+    applyingRemotePreferences = false;
+  });
 
   init();
   bindSystemThemeListener(() => currentThemeMode);
@@ -76,6 +105,8 @@ export const settings = (() => {
     set(settings);
 
     applyTheme(theme, false);
+
+    await authStore.pushPreferences(settings);
 
     if (!hasTheme) setStorage({ theme, darkMode: settings.darkMode });
 
@@ -146,6 +177,9 @@ export const settings = (() => {
 
         return settings;
       });
+
+      if (!applyingRemotePreferences)
+        authStore.pushPreferences(get({ subscribe }));
     },
     setTheme(theme: ESettings['theme']) {
       const darkMode = resolveThemeMode(theme);
@@ -160,6 +194,9 @@ export const settings = (() => {
 
         return settings;
       });
+
+      if (!applyingRemotePreferences)
+        authStore.pushPreferences(get({ subscribe }));
     },
     clear
   };

@@ -1,10 +1,10 @@
 <div align='center'>
 
-![Sessionic icon](./public/favicons/96.png)
+![Amit-Browsing icon](./public/ablogo.svg)
 
-# Sessionic
+# Amit-Browsing
 
-A web extension to save, manage and restore sessions, windows and tabs.
+A browser extension to save, manage, and restore tab groups, sessions, windows, and tabs.
 
 <a href="https://addons.mozilla.org/en-US/firefox/addon/sessionic
 "><img src="https://blog.mozilla.org/addons/files/2020/04/get-the-addon-fx-apr-2020.svg" alt='Get the Extension on Firefox' height="75">
@@ -14,15 +14,14 @@ A web extension to save, manage and restore sessions, windows and tabs.
 <a href="https://microsoftedge.microsoft.com/addons/detail/sessionic/opniekmiofodaifalpdfoecpcloliico"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Get_it_from_Microsoft_Badge.svg/320px-Get_it_from_Microsoft_Badge.svg.png" alt="Get the Extension on Edge" height="75" style="border: 1px solid transparent; border-radius:4px;">
 </a>
 
-**Popup View**
-| Light | Dark |
+**Screenshots**
+| Popup Dark | Popup Light |
 | :------------------------------------------------------: | :-------------------------------------------------------------: |
-| ![Screenshot of the extension popup in Light mode](.github/popup-light.png) | ![Screenshot of the extension popup in Dark mode](.github/popup.png) |
+| ![Amit-Browsing popup in dark mode](.github/screenshots/amit-browsing-dark.png) | ![Amit-Browsing popup in light mode](.github/screenshots/amit-browsing-light.png) |
 
-**Full View**
-| Light | Dark |
-| :------------------------------------------------------: | :-------------------------------------------------------------: |
-| ![Screenshot of the extension Full View in Light mode](.github/fullview-light.png) | ![Screenshot of the extension Full View in Dark mode](.github/fullview.png) |
+| In Browser |
+| :------------------------------------------------------: |
+| ![Amit-Browsing running in the browser](.github/screenshots/amit-browsing-browser.png) |
 
 </div>
 

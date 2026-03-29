@@ -1,4 +1,5 @@
 import { i18n } from 'webextension-polyfill';
+import { normalizeTimestampValue } from './timestamps';
 
 const timeInMS = {
   Year: 31536000000,
@@ -8,8 +9,13 @@ const timeInMS = {
   Minute: 60000
 };
 
-export function getRelativeTime(date: number) {
-  const elapsed = Date.now() - date;
+export function getRelativeTime(date: unknown) {
+  const normalizedDate = normalizeTimestampValue(date);
+  if (!normalizedDate) return i18n.getMessage('labelJustNow');
+
+  const elapsed = Date.now() - normalizedDate;
+  if (!Number.isFinite(elapsed) || elapsed < 0)
+    return i18n.getMessage('labelJustNow');
 
   for (const unit in timeInMS) {
     if (elapsed > timeInMS[unit as keyof typeof timeInMS]) {

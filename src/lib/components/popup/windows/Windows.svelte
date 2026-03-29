@@ -1,38 +1,51 @@
 <script lang="ts">
-  import type { ETab } from '@/lib/types';
+  import type { ETab, EWindow } from '@/lib/types';
   import { sessions, currentSession } from '@/lib/stores';
   import { Window } from '@/lib/components';
 
   export { className as class };
   let className = '';
-
-  let ulEl: HTMLUListElement;
+  export let viewMode: 'list' | 'card' = 'list';
 
   $: session = sessions.selection;
 
   $: current = $session === $currentSession;
+  $: sessionWindows = Array.isArray($session?.windows) ? $session.windows : [];
+  $: flattenedTabs = sessionWindows.flatMap((window) => window.tabs ?? []);
+  $: displayWindow = {
+    tabs: flattenedTabs,
+    focused: true,
+    incognito: false,
+    alwaysOnTop: false
+  } as EWindow;
 
-  function deleteTab(windowIndex: number, tab: ETab) {
-    if (!$session || !$session.windows) return;
+  function deleteTab(tab: ETab) {
+    if (!$session || !Array.isArray($session.windows)) return;
 
-    const window = $session.windows[windowIndex];
+    let removed = false;
 
-    if (!window) return;
+    for (let windowIndex = $session.windows.length - 1; windowIndex >= 0; windowIndex -= 1) {
+      const window = $session.windows[windowIndex];
+      if (!window?.tabs?.length) continue;
 
-    if (window.tabs?.length) {
-      if (tab) {
-        const tabIndex = window.tabs.indexOf(tab);
+      const tabIndex = window.tabs.findIndex(
+        (windowTab) =>
+          windowTab === tab ||
+          (tab.id && windowTab.id === tab.id) ||
+          (windowTab.url === tab.url && windowTab.title === tab.title)
+      );
 
-        if (tabIndex === -1) return;
+      if (tabIndex === -1) continue;
 
-        window.tabs.splice(tabIndex, 1);
+      window.tabs.splice(tabIndex, 1);
+      $session.tabsNumber = Math.max(0, $session.tabsNumber - 1);
+      removed = true;
 
-        $session.tabsNumber--;
-      } else $session.tabsNumber -= window.tabs?.length;
+      if (!window.tabs.length) $session.windows.splice(windowIndex, 1);
+      break;
     }
 
-    if (!window.tabs?.length || (!tab && window))
-      $session.windows.splice(windowIndex, 1);
+    if (!removed) return;
 
     sessions.put($session);
 
@@ -41,21 +54,20 @@
   }
 </script>
 
-{#if $session?.windows && $session?.tabsNumber}
+{#if sessionWindows.length && $session?.tabsNumber}
   <ul
-    bind:this={ulEl}
     class="flex h-full min-h-0 w-full min-w-0 flex-col gap-3 overflow-x-hidden overflow-y-auto {className}"
   >
-    {#each $session.windows as window, windowIndex}
-      <Window
-        {window}
-        {current}
-        fill={$session.windows.length === 1}
-        on:delete={(event) => {
-          deleteTab(windowIndex, event.detail);
-        }}
-      />
-    {/each}
+    <Window
+      window={displayWindow}
+      {current}
+      {viewMode}
+      windowIndex={0}
+      fill={true}
+      on:delete={(event) => {
+        deleteTab(event.detail);
+      }}
+    />
   </ul>
 {:else}
   <div class="flex flex-col items-center justify-center h-full gap-4">

@@ -9,6 +9,7 @@ import type { UUID } from 'crypto';
 import type { EClosedItem, ESession, EWindow, SessionKind } from '@/lib/types';
 import { log } from '@/lib/utils/log';
 import { recoveryDefaults } from '@/lib/constants/shared';
+import { normalizeTimestampValue } from './timestamps';
 
 interface DB extends DBSchema {
   sessions: {
@@ -63,14 +64,63 @@ class SessionsDB {
       log.error('[db.initDB]: aborted transactions in db: ', this.db);
   }
 
+  private normalizeSessionRecord(session: ESession) {
+    const dateSaved = normalizeTimestampValue(session.dateSaved) ?? Date.now();
+    const createdAt =
+      normalizeTimestampValue(session.createdAt) ?? dateSaved;
+    const updatedAt =
+      normalizeTimestampValue(session.updatedAt) ??
+      normalizeTimestampValue(session.dateModified) ??
+      createdAt;
+    const dateModified =
+      normalizeTimestampValue(session.dateModified) ?? updatedAt;
+    const lastOpenedAt = normalizeTimestampValue(session.lastOpenedAt);
+    const remoteUpdatedAt = normalizeTimestampValue(session.remoteUpdatedAt);
+
+    return {
+      ...session,
+      dateSaved,
+      dateModified,
+      createdAt,
+      updatedAt,
+      lastOpenedAt,
+      remoteUpdatedAt
+    };
+  }
+
+  private needsTimestampRepair(session: ESession, normalized: ESession) {
+    return (
+      session.dateSaved !== normalized.dateSaved ||
+      session.dateModified !== normalized.dateModified ||
+      session.createdAt !== normalized.createdAt ||
+      session.updatedAt !== normalized.updatedAt ||
+      session.lastOpenedAt !== normalized.lastOpenedAt ||
+      session.remoteUpdatedAt !== normalized.remoteUpdatedAt
+    );
+  }
+
+  private async normalizeLoadedSessions(sessions: ESession[]) {
+    const normalized = sessions.map((session) => this.normalizeSessionRecord(session));
+    const repaired = normalized.filter((session, index) =>
+      this.needsTimestampRepair(sessions[index]!, session)
+    );
+
+    if (repaired.length) {
+      await Promise.all(repaired.map((session) => this.db.put('sessions', session)));
+    }
+
+    return normalized;
+  }
+
   async loadSessions(query?: number | IDBKeyRange, count?: number) {
     log.info('[db.loadSessions] init');
 
     await this.initDB();
 
     const items = await this.db.getAllFromIndex('sessions', 'dateSaved', query, count);
+    const normalized = await this.normalizeLoadedSessions(items);
 
-    return items.filter(
+    return normalized.filter(
       (session) => !session.kind || session.kind === 'saved'
     );
   }
@@ -80,7 +130,7 @@ class SessionsDB {
 
     await this.initDB();
 
-    const sessions = await this.db.getAll('sessions');
+    const sessions = await this.normalizeLoadedSessions(await this.db.getAll('sessions'));
 
     return sessions.filter((session) => kinds.includes(session.kind ?? 'saved'));
   }
@@ -105,11 +155,15 @@ class SessionsDB {
     if (!maxBatch) maxBatch = totalCount;
 
     for await (const cursor of tx.iterate(undefined, direction)) {
-      cursor.value.windows = {
-        length: cursor.value.windows.length
+      const normalized = this.normalizeSessionRecord(cursor.value);
+      if (this.needsTimestampRepair(cursor.value, normalized))
+        void this.db.put('sessions', normalized);
+
+      normalized.windows = {
+        length: normalized.windows.length
       } as EWindow[];
 
-      sessions.push(cursor.value);
+      sessions.push(normalized);
 
       currentCount++;
 
@@ -130,7 +184,7 @@ class SessionsDB {
 
     await this.initDB();
 
-    const sessions = (await this.db.getAll('sessions'))
+    const sessions = (await this.normalizeLoadedSessions(await this.db.getAll('sessions')))
       .filter((session) => kinds.includes(session.kind ?? 'saved'))
       .sort((a, b) => (b.updatedAt ?? b.dateSaved ?? 0) - (a.updatedAt ?? a.dateSaved ?? 0));
 
@@ -156,7 +210,7 @@ class SessionsDB {
 
     await this.initDB();
 
-    return this.db.add('sessions', session);
+    return this.db.add('sessions', this.normalizeSessionRecord(session));
   }
 
   async upsertSession(session: ESession) {
@@ -164,7 +218,7 @@ class SessionsDB {
 
     await this.initDB();
 
-    return this.db.put('sessions', session);
+    return this.db.put('sessions', this.normalizeSessionRecord(session));
   }
 
   async saveSessions(sessions: ESession[]) {
@@ -176,7 +230,7 @@ class SessionsDB {
 
     return new Promise<void>((resolve, reject) => {
       for (const session of sessions) {
-        tx.store.add(session);
+        tx.store.add(this.normalizeSessionRecord(session));
       }
 
       tx.oncomplete = () => {
@@ -201,7 +255,7 @@ class SessionsDB {
 
     await this.initDB();
 
-    return this.db.put('sessions', session);
+    return this.db.put('sessions', this.normalizeSessionRecord(session));
   }
 
   async deleteSession(session: ESession) {

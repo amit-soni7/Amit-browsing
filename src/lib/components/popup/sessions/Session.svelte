@@ -8,7 +8,8 @@
     sendMessage,
     markResult,
     sessionsDB,
-    getRelativeTime
+    getRelativeTime,
+    normalizeTimestampValue
   } from '@/lib/utils';
   import type { UUID } from 'crypto';
   import { i18n } from 'webextension-polyfill';
@@ -24,6 +25,7 @@
         case_sensitive: false
       })
     : session?.title;
+  $: savedAt = normalizeTimestampValue(session?.dateSaved);
 
   let isDropTarget = false;
 
@@ -49,50 +51,31 @@
     const rawTab = event.dataTransfer?.getData('application/x-sessionic-tab');
     if (!rawTab) return;
 
-    const droppedTab = JSON.parse(rawTab) as ETab;
-    if (!droppedTab.url || session.id === 'current') return;
+    const droppedTab = JSON.parse(rawTab) as {
+      tab: ETab;
+      sourceSessionId: 'current' | UUID | string;
+      sourceWindowIndex: number;
+      sourceTabIndex: number;
+    };
 
-    if (!Array.isArray(session.windows)) {
-      session.windows = (await sessionsDB.loadSessionWindows(
-        session.id as UUID
-      )) as EWindow[];
-    }
-
-    if (!session.windows?.length) {
-      session.windows = [{ tabs: [] } as EWindow];
-    }
-
-    const targetWindow =
-      session.windows.find((window) => window.focused) ?? session.windows[0];
-
-    if (!targetWindow) return;
-
-    targetWindow.tabs ??= [];
-
-    const tabExists = targetWindow.tabs.some(
-      (tab) => tab.url === droppedTab.url && tab.title === droppedTab.title
-    );
-
-    if (tabExists) return;
-
-    targetWindow.tabs.push({
-      ...droppedTab,
-      active: false,
-      highlighted: false,
-      selected: false
-    });
-    session.tabsNumber += 1;
-
-    await sessions.put(session);
+    await sessions.moveTab(droppedTab, session.id as UUID | string);
   }
 </script>
 
 <li class="mb-3 last:mb-0">
-  <button
+  <div
     class="session-container group {$selected?.id === session.id
       ? '!bg-primary/15 !border-primary/30 shadow-[0_0_12px_rgba(212,175,55,0.06)]'
       : ''} {isDropTarget ? '!border-primary !bg-primary/10' : ''}"
+    role="button"
+    tabindex="0"
     on:click={() => selected.select(session)}
+    on:keydown={(event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        selected.select(session);
+      }
+    }}
     on:dragenter={(event) => {
       if (!event.dataTransfer?.types.includes('application/x-sessionic-tab'))
         return;
@@ -102,7 +85,7 @@
       if (!event.dataTransfer?.types.includes('application/x-sessionic-tab'))
         return;
       event.preventDefault();
-      event.dataTransfer.dropEffect = 'copy';
+      event.dataTransfer.dropEffect = 'move';
       isDropTarget = true;
     }}
     on:dragleave={() => {
@@ -111,18 +94,23 @@
     on:drop={handleDrop}
   >
     <div class="session-info">
-      <button
-        use:tooltip={{ title: i18n.getMessage('popupTipOpen') }}
-        class="session-name"
-        on:click|stopPropagation={openSession}
-      >
+      <div class="session-name">
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
         {@html title}
-      </button>
+      </div>
 
       <div
         class="ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
       >
+        <button
+          use:tooltip={{ title: i18n.getMessage('popupTipOpen') }}
+          class="p-1 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all"
+          title={i18n.getMessage('popupTipOpen')}
+          on:click|stopPropagation={openSession}
+        >
+          <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+        </button>
+
         <button
           use:tooltip={{ title: i18n.getMessage('labelRename') }}
           class="p-1 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all"
@@ -189,12 +177,12 @@
         {session?.tabsNumber}
       </div>
 
-      {#if session?.dateSaved}
+      {#if savedAt}
         <div
           class="session-card"
           use:tooltip={{
             title: `${i18n.getMessage('labelSavedAt')} ${new Date(
-              session.dateSaved
+              savedAt
             ).toLocaleString(navigator.language, {
               dateStyle: 'short',
               timeStyle: 'short'
@@ -202,7 +190,7 @@
           }}
         >
           <span class="material-symbols-outlined text-[13px]">schedule</span>
-          {getRelativeTime(session.dateSaved)}
+          {getRelativeTime(savedAt)}
         </div>
       {/if}
 
@@ -216,5 +204,5 @@
         />
       {/if}
     </div>
-  </button>
+  </div>
 </li>

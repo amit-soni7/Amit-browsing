@@ -1,5 +1,10 @@
 <script lang="ts">
-  import { currentSession, filtered, sessions, settings } from '@/lib/stores';
+  import {
+    currentSession,
+    filtered,
+    sessions,
+    settings
+  } from '@/lib/stores';
   import {
     VirtualList,
     Windows,
@@ -7,10 +12,10 @@
     ActionModal,
     TagsModal,
     Session,
-    CurrentSession,
-    RecoverySection
+    CurrentSession
   } from '@/lib/components';
-  import { isInputTarget } from '@/lib/utils';
+  import { isInputTarget, sendMessage, sessionsDB } from '@/lib/utils';
+  import type { UUID } from 'crypto';
   import { i18n } from 'webextension-polyfill';
 
   $: selection = sessions.selection;
@@ -30,6 +35,7 @@
   let isScrolled = false;
 
   let tagsShow = false;
+  let viewMode: 'list' | 'card' = 'list';
 
   async function saveSession(title: string) {
     $currentSession.title = title;
@@ -45,6 +51,27 @@
       return saveSession(i18n.getMessage('labelUnnamedSession'));
 
     modalShow = true;
+  }
+
+  async function addGroup() {
+    const id = await sessions.addEmptyGroup();
+    scrollToIndex($sessions.findIndex((session) => session.id === id));
+  }
+
+  async function openSelectedGroup() {
+    if (!$selection || $selection.id === 'current') return;
+
+    if (!Array.isArray($selection.windows)) {
+      $selection.windows =
+        ((await sessionsDB.loadSessionWindows($selection.id as UUID)) as any) ??
+        [];
+    }
+
+    sendMessage({
+      message: 'openSession',
+      session: $selection,
+      discarded: $settings.discarded
+    });
   }
 
   async function handleKeydown(ev: KeyboardEvent) {
@@ -113,10 +140,27 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div class="mt-2 flex h-[90vh] gap-2 overflow-hidden px-5 pb-5">
+<div class="mt-2 flex h-[90vh] gap-3 overflow-hidden px-5 pb-5">
   <div class="flex h-full max-w-xs flex-1 flex-col">
-    <CurrentSession on:save={saveAction} />
-    <RecoverySection />
+    <div class="mb-3 flex items-center gap-2">
+      <button
+        class="inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-surface-container-high px-4 py-2.5 text-sm font-bold text-primary shadow-lg shadow-primary/10 transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary-focus"
+        on:click={saveAction}
+      >
+        <span class="material-symbols-outlined text-[20px]">save</span>
+        <span>{i18n.getMessage('labelSave')}</span>
+      </button>
+
+      <button
+        class="inline-flex items-center gap-2 rounded-xl border border-outline-variant/30 bg-surface-container px-4 py-2.5 text-sm font-bold text-on-surface transition-all hover:border-primary/30 hover:bg-surface-container-high hover:text-primary"
+        on:click={addGroup}
+      >
+        <span class="material-symbols-outlined text-[20px]">add</span>
+        <span>Add</span>
+      </button>
+    </div>
+
+    <CurrentSession />
 
     {#await $filtered}
       <p class="mt-2 text-center font-normal">Looking for sessions...</p>
@@ -144,7 +188,52 @@
       {/if}
     {/await}
   </div>
-  <Windows class="flex-1" />
+  <div class="flex min-h-0 flex-1 flex-col gap-3">
+    <div class="flex items-center gap-2 rounded-xl border border-outline-variant/20 bg-surface-container-low px-4 py-3">
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-sm font-semibold text-on-surface">
+          {$selection?.id === 'current'
+            ? i18n.getMessage('labelCurrentSession')
+            : $selection?.title ?? 'Select a tab group'}
+        </p>
+        <p class="text-xs text-on-surface-variant">
+          {$selection?.id === 'current'
+            ? 'Currently open browser tabs'
+            : 'Saved tabs preview'}
+        </p>
+      </div>
+
+      {#if $selection?.id !== 'current'}
+        <button
+          class="rounded-lg border border-outline-variant/30 bg-surface-container px-3 py-2 text-xs font-semibold text-on-surface transition-all hover:border-primary/30 hover:text-primary"
+          on:click={openSelectedGroup}
+        >
+          Open all
+        </button>
+      {/if}
+
+      <div class="flex items-center gap-1 rounded-lg border border-outline-variant/25 bg-surface px-1 py-1">
+        <button
+          class="rounded-md px-2 py-1 transition-all {viewMode === 'list'
+            ? 'bg-primary/15 text-primary'
+            : 'text-on-surface-variant hover:bg-surface-container-high'}"
+          on:click={() => (viewMode = 'list')}
+        >
+          <span class="material-symbols-outlined text-[18px]">view_list</span>
+        </button>
+        <button
+          class="rounded-md px-2 py-1 transition-all {viewMode === 'card'
+            ? 'bg-primary/15 text-primary'
+            : 'text-on-surface-variant hover:bg-surface-container-high'}"
+          on:click={() => (viewMode = 'card')}
+        >
+          <span class="material-symbols-outlined text-[18px]">grid_view</span>
+        </button>
+      </div>
+    </div>
+
+    <Windows class="flex-1" {viewMode} />
+  </div>
 </div>
 
 <InputModal
