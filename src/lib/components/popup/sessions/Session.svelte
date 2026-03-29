@@ -115,7 +115,7 @@
           use:tooltip={{ title: i18n.getMessage('labelRename') }}
           class="p-1 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all"
           title={i18n.getMessage('labelRename')}
-          on:click|stopPropagation={() => dispatch('renameModal')}
+          on:click|stopPropagation={() => dispatch('renameModal', session)}
         >
           <span class="material-symbols-outlined text-[16px]">edit</span>
         </button>
@@ -131,7 +131,7 @@
             session.tags ? 'labelRemoveTag' : 'labelAddTag'
           )}
           on:click|stopPropagation={() => {
-            if (!session?.tags) return dispatch('tagsModal');
+            if (!session?.tags) return dispatch('tagsModal', session);
             delete session.tags;
             sessions.put(session);
           }}
@@ -145,7 +145,7 @@
           use:tooltip={{ title: i18n.getMessage('labelDelete') }}
           class="p-1 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all"
           title={i18n.getMessage('labelDelete')}
-          on:click|stopPropagation={() => dispatch('deleteModal')}
+          on:click|stopPropagation={() => dispatch('deleteModal', session)}
         >
           <span class="material-symbols-outlined text-[16px]">delete</span>
         </button>

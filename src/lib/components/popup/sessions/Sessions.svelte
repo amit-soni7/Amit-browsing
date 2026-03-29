@@ -1,10 +1,7 @@
 <script lang="ts">
-  import {
-    currentSession,
-    filtered,
-    sessions,
-    settings
-  } from '@/lib/stores';
+  import browser, { i18n } from 'webextension-polyfill';
+  import type { ESession, EWindow } from '@/lib/types';
+  import { notification, currentSession, filtered, sessions, settings } from '@/lib/stores';
   import {
     VirtualList,
     Windows,
@@ -16,7 +13,6 @@
   } from '@/lib/components';
   import { isInputTarget, sendMessage, sessionsDB } from '@/lib/utils';
   import type { UUID } from 'crypto';
-  import { i18n } from 'webextension-polyfill';
 
   $: selection = sessions.selection;
 
@@ -29,6 +25,7 @@
   let modalType: 'Save' | 'Rename' = 'Rename';
 
   let actionShow = false;
+  let modalTarget: ESession | null = null;
 
   let scrollToIndex: (index: number) => void;
 
@@ -36,6 +33,11 @@
 
   let tagsShow = false;
   let viewMode: 'list' | 'card' = 'list';
+  const dashboardUrl = browser.runtime.getURL('src/popup/index.html?tab=true');
+
+  $: selectedSavedSession = $selection?.id !== 'current' ? $selection : null;
+  $: activeSessionTarget = modalTarget ?? selectedSavedSession;
+  $: if (!modalShow && !actionShow && !tagsShow) modalTarget = null;
 
   async function saveSession(title: string) {
     $currentSession.title = title;
@@ -56,6 +58,82 @@
   async function addGroup() {
     const id = await sessions.addEmptyGroup();
     scrollToIndex($sessions.findIndex((session) => session.id === id));
+  }
+
+  async function collapseCurrentWindowToOneTab() {
+    const currentWindow = await browser.windows.getCurrent({ populate: true });
+    const orderedTabs = [...(currentWindow.tabs ?? [])]
+      .filter((tab) => typeof tab.id === 'number')
+      .sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+    const savableTabs = orderedTabs.filter((tab) => tab.url !== dashboardUrl);
+
+    if (!savableTabs.length) {
+      notification.error(i18n.getMessage('notifySaveFailEmpty'));
+      return;
+    }
+
+    const firstTab = savableTabs[0]!;
+    const title =
+      firstTab.title?.trim() ||
+      firstTab.url ||
+      i18n.getMessage('labelUnnamedSession');
+
+    const windowSnapshot = {
+      ...currentWindow,
+      tabs: savableTabs
+    } as EWindow;
+
+    const session = {
+      title,
+      windows: [windowSnapshot],
+      tabsNumber: savableTabs.length,
+      dateSaved: Date.now(),
+      dateModified: Date.now()
+    } as ESession;
+
+    let id: string | undefined;
+
+    try {
+      id = await sessions.add(session);
+    } catch (error) {
+      notification.error(
+        'Failed to save the current window. No tabs were closed.',
+        `[sessions.oneTab] failed to save current window: ${error}`
+      );
+      return;
+    }
+
+    if (!id) return;
+
+    if (typeof scrollToIndex !== 'undefined')
+      scrollToIndex($sessions.findIndex((savedSession) => savedSession.id === id));
+
+    const tabIdsToClose = savableTabs
+      .slice(1)
+      .map((tab) => tab.id)
+      .filter((tabId): tabId is number => typeof tabId === 'number');
+
+    if (!tabIdsToClose.length) {
+      notification.success_info(`Saved "${title}". The current window already has one tab.`);
+      return;
+    }
+
+    const results = await Promise.allSettled(
+      tabIdsToClose.map((tabId) => browser.tabs.remove(tabId))
+    );
+    const failedCount = results.filter((result) => result.status === 'rejected').length;
+    const closedCount = tabIdsToClose.length - failedCount;
+
+    if (failedCount) {
+      notification.warning(
+        `Saved "${title}". Closed ${closedCount} tabs and kept the first tab open. ${failedCount} tabs could not be closed.`
+      );
+      return;
+    }
+
+    notification.success_info(
+      `Saved "${title}" and closed ${closedCount} tabs. The first tab was kept open.`
+    );
   }
 
   async function openSelectedGroup() {
@@ -122,12 +200,13 @@
       }
 
       case 'KeyR':
+        modalTarget = selectedSavedSession;
         modalType = 'Rename';
-        modalShow = true;
+        modalShow = !!selectedSavedSession;
         break;
 
       case 'Delete':
-        sessions.remove($selection);
+        if (selectedSavedSession) await sessions.remove(selectedSavedSession);
         break;
 
       default:
@@ -158,6 +237,14 @@
         <span class="material-symbols-outlined text-[20px]">add</span>
         <span>Add</span>
       </button>
+
+      <button
+        class="inline-flex items-center gap-2 rounded-xl border border-outline-variant/30 bg-surface-container px-4 py-2.5 text-sm font-bold text-on-surface transition-all hover:border-primary/30 hover:bg-surface-container-high hover:text-primary"
+        on:click={collapseCurrentWindowToOneTab}
+      >
+        <span class="material-symbols-outlined text-[20px]">tab</span>
+        <span>One Tab</span>
+      </button>
     </div>
 
     <CurrentSession />
@@ -175,12 +262,19 @@
         >
           <Session
             session={item}
-            on:renameModal={() => {
+            on:renameModal={(event) => {
+              modalTarget = event.detail;
               modalType = 'Rename';
               modalShow = true;
             }}
-            on:deleteModal={() => (actionShow = true)}
-            on:tagsModal={() => (tagsShow = true)}
+            on:deleteModal={(event) => {
+              modalTarget = event.detail;
+              actionShow = true;
+            }}
+            on:tagsModal={(event) => {
+              modalTarget = event.detail;
+              tagsShow = true;
+            }}
           />
         </VirtualList>
       {:else}
@@ -240,18 +334,23 @@
   bind:open={modalShow}
   type={modalType}
   on:inputSubmit={async (event) => {
-    if (modalType === 'Rename' && $selection.title !== event.detail) {
-      $selection.title = event.detail;
+    if (
+      modalType === 'Rename' &&
+      activeSessionTarget &&
+      activeSessionTarget.title !== event.detail
+    ) {
+      activeSessionTarget.title = event.detail;
 
-      await sessions.put($selection);
+      await sessions.put(activeSessionTarget);
 
       scrollToIndex(
-        $sessions.findIndex((session) => session.id === $selection.id)
+        $sessions.findIndex((session) => session.id === activeSessionTarget?.id)
       );
     } else if (modalType === 'Save') {
       saveSession(event.detail);
     }
 
+    modalTarget = null;
     modalShow = false;
   }}
 />
@@ -259,10 +358,16 @@
 <ActionModal
   bind:open={actionShow}
   on:deleteAction={async () => {
-    await sessions.remove($selection);
+    if (!activeSessionTarget) {
+      actionShow = false;
+      return;
+    }
 
-    selection.select($currentSession);
+    await sessions.remove(activeSessionTarget);
 
+    if ($selection?.id === activeSessionTarget.id) selection.select($currentSession);
+
+    modalTarget = null;
     actionShow = false;
   }}
 />
@@ -270,10 +375,12 @@
 <TagsModal
   bind:open={tagsShow}
   on:tagSubmit={(event) => {
+    if (!activeSessionTarget) return;
+
     const tag = event.detail;
 
-    $selection.tags = tag;
+    activeSessionTarget.tags = tag;
 
-    sessions.put($selection);
+    sessions.put(activeSessionTarget);
   }}
 />

@@ -233,7 +233,7 @@ export const sessions = (() => {
       );
 
     update((sessions) => {
-      const index = sessions.indexOf(target);
+      const index = sessions.findIndex((session) => session.id === target.id);
 
       if (index === -1) {
         notification.error(
@@ -244,10 +244,12 @@ export const sessions = (() => {
         return sessions;
       }
 
-      sessionsDB.deleteSession(target);
+      const sessionToRemove = sessions[index]!;
+
+      sessionsDB.deleteSession(sessionToRemove);
 
       // Remove from cloud (non-blocking)
-      authStore.removeSavedSession(target.id as string);
+      authStore.removeSavedSession(sessionToRemove.id as string);
 
       sessions.splice(index, 1);
 
